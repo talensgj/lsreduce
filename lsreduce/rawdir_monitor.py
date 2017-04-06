@@ -126,35 +126,6 @@ def calibrate_photometry(date, camid, dirtree, systable):
     
     return
 
-###############################################################################
-### Workers.
-###############################################################################
-
-def dark_worker(queue):
-    
-    while True:
-        
-        item = queue.get()
-        
-        if (item == 'DONE'):
-            break
-        else:
-            reduction.reduce_dark_frames(*item)
-            
-    return
-    
-def science_worker(queue):
-    
-    while True:
-        
-        item = queue.get()
-        
-        if (item == 'DONE'):
-            break
-        else:
-            reduction.reduce_science_frames(*item)
-            
-    return
 
 ###############################################################################
 ### Main reduction loop.
