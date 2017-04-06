@@ -8,7 +8,7 @@ import logging
 
 import numpy as np
 
-from . import bringio
+from . import io
 from . import reduction    
 from . import astrometry
 from . import configuration as cfg
@@ -36,7 +36,7 @@ def listdir_fullpath(d):
 
 def combine_temporary_files(date, camid, dirtree):
     
-    log = logging.getLogger('bringreduce')
+    log = logging.getLogger('lsreduce')
     
     # Combine the fast lightcurve files.
     filelist = glob.glob(os.path.join(dirtree['tmp'], 'tmp_fast*.hdf5'))
@@ -48,7 +48,7 @@ def combine_temporary_files(date, camid, dirtree):
 
         log.info('Combining {} temporary fast files, and writig results to {}'.format(len(filelist), filename))
 
-        bringio.combine_photometry(filename, filelist)
+        io.combine_photometry(filename, filelist)
 
         for filename in filelist:
             os.remove(filename)
@@ -63,7 +63,7 @@ def combine_temporary_files(date, camid, dirtree):
 
         log.info('Combining {} temporary slow files, and writig results to {}'.format(len(filelist), filename))
 
-        bringio.combine_photometry(filename, filelist)
+        io.combine_photometry(filename, filelist)
 
         for filename in filelist:
             os.remove(filename)
@@ -75,7 +75,7 @@ def calibrate_photometry(date, camid, dirtree, systable):
     import datetime
     from . import cdecor_vmag    
     
-    log = logging.getLogger('bringreduce')
+    log = logging.getLogger('lsreduce')
     
     # Get all fast lightcurves in products directory.
     log.info('Getting list of fast lightcurve files.')
@@ -110,7 +110,7 @@ def calibrate_photometry(date, camid, dirtree, systable):
     
     log.info('Saving combined photometry to {}'.format(filename))
     
-    bringio.combine_photometry(filename, filelist, astrometry=False)
+    io.combine_photometry(filename, filelist, astrometry=False)
     
     # Perform the coarse decorrelation.
     log.info('Running the coarse decorrelation.')    
@@ -119,7 +119,7 @@ def calibrate_photometry(date, camid, dirtree, systable):
     
     # Update the systable.
     log.info('Updating the systematics table.')
-    bringio.update_systable(sys.sysfile, systable)
+    io.update_systable(sys.sysfile, systable)
     
     # Remove the combined lightcurves.
     os.remove(filename)
@@ -162,7 +162,7 @@ def science_worker(queue):
 
 def build_dirtree(date, camid):
 
-    log = logging.getLogger('bringreduce')    
+    log = logging.getLogger('lsreduce')    
     log.info('Building directory tree for {}{}.'.format(date, camid))
     
     dirtree = dict()
@@ -252,7 +252,7 @@ def rereduce(rawdir, outdir, nscience=50, ndark=50):
             log.warn('Directory exists, {}'.format(dirtree[key])) 
 
     # Get the siteinfo, darktables and astrometry.
-    siteinfo = bringio.read_siteinfo(cfg.siteinfo, cfg.sitename)
+    siteinfo = io.read_siteinfo(cfg.siteinfo, cfg.sitename)
     darktables = cfg.darktables[camid] 
     astromaster = cfg.astromaster[camid]
 
@@ -279,11 +279,11 @@ def rereduce(rawdir, outdir, nscience=50, ndark=50):
 
 def rawdir_monitor(camid, twilight=5, nscience=50, ndark=50, timeout=10, step=6.4):    
 
-    log = logging.getLogger('bringreduce')
+    log = logging.getLogger('lsreduce')
     log.info('Initializing main reduction loop for camera {}.'.format(camid))    
     
     # Set up the listener.
-    siteinfo = bringio.read_siteinfo(cfg.siteinfo, cfg.sitename)
+    siteinfo = io.read_siteinfo(cfg.siteinfo, cfg.sitename)
     darktables = cfg.darktables[camid] 
     astromaster = cfg.astromaster[camid]
     systable = cfg.systable[camid]
@@ -309,13 +309,13 @@ def rawdir_monitor(camid, twilight=5, nscience=50, ndark=50, timeout=10, step=6.
         dirtree = build_dirtree(date, camid)
         
         # Get processed files for this night.
-        in_queue = bringio.read_in_queue(queuefile)
+        in_queue = io.read_in_queue(queuefile)
         
         # Get contents of rawdir and add any processed files to the archive.
         filelist = listdir_fullpath(rawdir)
         filelist = in_queue.intersection(set(filelist))
         if (len(filelist) > 0):        
-            bringio.archive_files(list(filelist), dirtree['rawarchive'])
+            io.archive_files(list(filelist), dirtree['rawarchive'])
                 
         day_tasks_finished = False
         
@@ -356,7 +356,7 @@ def rawdir_monitor(camid, twilight=5, nscience=50, ndark=50, timeout=10, step=6.
                 
                 # Write a queuefile to indicate the night has begun.
                 queuefile = os.path.join(dirtree['tmp'], date + '.txt')                
-                bringio.write_in_queue(queuefile, set())                
+                io.write_in_queue(queuefile, set())                
                 
                 day_tasks_finished = False
         
@@ -371,8 +371,8 @@ def rawdir_monitor(camid, twilight=5, nscience=50, ndark=50, timeout=10, step=6.
                 
                 # Archive the files.
                 in_queue.update(dark_frames)
-                bringio.write_in_queue(queuefile, in_queue)
-                bringio.archive_files(dark_frames, dirtree['rawarchive'])
+                io.write_in_queue(queuefile, in_queue)
+                io.archive_files(dark_frames, dirtree['rawarchive'])
 
                 dark_time = 0
                 
@@ -390,8 +390,8 @@ def rawdir_monitor(camid, twilight=5, nscience=50, ndark=50, timeout=10, step=6.
 
                 # Archive the files.
                 in_queue.update(science_frames)
-                bringio.write_in_queue(queuefile, in_queue)
-                bringio.archive_files(science_frames, dirtree['rawarchive'])
+                io.write_in_queue(queuefile, in_queue)
+                io.archive_files(science_frames, dirtree['rawarchive'])
                          
                 science_time = 0            
                 
@@ -418,8 +418,8 @@ def rawdir_monitor(camid, twilight=5, nscience=50, ndark=50, timeout=10, step=6.
                     
                     # Archive the files.
                     in_queue.update(dark_frames)  
-                    bringio.write_in_queue(queuefile, in_queue)
-                    bringio.archive_files(dark_frames, dirtree['rawarchive'])
+                    io.write_in_queue(queuefile, in_queue)
+                    io.archive_files(dark_frames, dirtree['rawarchive'])
             
                 if (len(science_frames) > 0):
                     
@@ -427,8 +427,8 @@ def rawdir_monitor(camid, twilight=5, nscience=50, ndark=50, timeout=10, step=6.
                     
                     # Archive the files.
                     in_queue.update(science_frames)
-                    bringio.write_in_queue(queuefile, in_queue)
-                    bringio.archive_files(science_frames, dirtree['rawarchive'])
+                    io.write_in_queue(queuefile, in_queue)
+                    io.archive_files(science_frames, dirtree['rawarchive'])
                   
             log.info('Finished processing raw files, starting daytime tasks.')                  
                   
@@ -469,7 +469,7 @@ def main():
 
 
 if __name__ == '__main__':
-    logging.basicConfig(filename='/home/talens/MASCARA/bringreduce/example.log', level=logging.DEBUG)
-    log = logging.getLogger('bringreduce')
+    logging.basicConfig(filename='/home/talens/MASCARA/lsreduce/example.log', level=logging.DEBUG)
+    log = logging.getLogger('lsreduce')
 
     main()

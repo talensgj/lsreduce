@@ -29,7 +29,7 @@ color_sequence = ['#1f77b4', '#aec7e8', '#ff7f0e', '#ffbb78', '#2ca02c',
                   '#8c564b', '#c49c94', '#e377c2', '#f7b6d2', '#7f7f7f',
                   '#c7c7c7', '#bcbd22', '#dbdb8d', '#17becf', '#9edae5']
 
-from . import creds, astrometry, bringio
+from . import creds, astrometry, io
 
 def send_mail(subject, message, images):  
     
@@ -40,7 +40,7 @@ def send_mail(subject, message, images):
 
     msg = MIMEMultipart()
     msg['Subject'] = subject
-    msg['From'] = 'bring@strw.leidenuniv.nl'
+    msg['From'] = 'mascara@strw.leidenuniv.nl'
     msg['To'] = ', '.join(creds.recipients)      
     
     text = MIMEText(message)
@@ -110,7 +110,7 @@ def reduction_summary(directory):
     message.append('Hi,\n\n')
     message.append('{} science frames were processed.\n'.format(nimages))
     message.append('The astrometry was solved {} times.\n'.format(nsols))
-    message.append('\nCheers,\nbRing')
+    message.append('\nCheers,\nLa Silla')
     message = ''.join(message)
     
     send_mail(subject, message, images)
@@ -410,7 +410,7 @@ def calibration_summary(directory, astromaster):
     # Create the text message.
     message.append('Hi,\n\n')
     message.append('The daily calibration is finished.\n')
-    message.append('\nCheers,\nbRing')
+    message.append('\nCheers,\nLa Silla')
     message = ''.join(message)
     
     send_mail(subject, message, images)
@@ -474,10 +474,10 @@ def plot_polar(grid, data, wcspars, **kwargs):
 def fig_transmission(filename, astromaster, figname):
     
     # Read the transmission map.
-    f = bringio.SysFile(filename)
+    f = io.SysFile(filename)
     pg, nobs, trans = f.read_transmission()
     
-    wcspars, polpars = bringio.read_astromaster(astromaster)    
+    wcspars, polpars = io.read_astromaster(astromaster)    
     
     # Plot the transmission map.
     fig = plt.figure(figsize=(14,9))
@@ -510,10 +510,10 @@ def fig_transmission(filename, astromaster, figname):
 def fig_intrapix(filename, astromaster, figname):
     
     # Read the intrapixel amplitudes.
-    f = bringio.SysFile(filename) 
+    f = io.SysFile(filename) 
     pg, nobs, amplitudes = f.read_intrapix()     
     
-    wcspars, polpars = bringio.read_astromaster(astromaster)        
+    wcspars, polpars = io.read_astromaster(astromaster)        
     
     # Plot the amplitudes.
     fig = plt.figure(figsize=(16, 10))
@@ -568,7 +568,7 @@ def fig_intrapix(filename, astromaster, figname):
 def fig_clouds(filename, figname):
     
     # Read the intrapixel amplitudes.
-    f = bringio.SysFile(filename)     
+    f = io.SysFile(filename)     
     hg, nobs, clouds, sigma, lstmin, lstmax = f.read_clouds() 
     
     # Plot the clouds.

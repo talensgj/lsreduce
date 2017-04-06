@@ -8,7 +8,7 @@ import logging.config
 
 logging.basicConfig(level=logging.DEBUG)
 
-from bringreduce import rawdir_monitor
+from lsreduce import rawdir_monitor
 
 if __name__ == '__main__':
     

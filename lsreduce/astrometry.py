@@ -415,7 +415,7 @@ class Astrometry(object):
             2 : The image is too bright no new solution was made.
             4 : Detection rate fell below the threshold, no solution was made.
         """
-        log = logging.getLogger('bringreduce').getChild('astrometry')
+        log = logging.getLogger('lsreduce').getChild('astrometry')
         aflag = 0        
         
         # Check for bright elements.

@@ -94,7 +94,7 @@ class Photometry(object):
         
         """
         
-        log = logging.getLogger('bringreduce').getChild('photometry')
+        log = logging.getLogger('lsreduce').getChild('photometry')
         
         ny, nx = image.shape
         nstars = len(x)        

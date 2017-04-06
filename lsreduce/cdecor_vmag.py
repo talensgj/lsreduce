@@ -8,11 +8,11 @@ import numpy as np
 
 from collections import namedtuple 
 
-from bringreduce import misc
-from bringreduce import bringio
-from bringreduce import grids
-from bringreduce import sigmas
-from bringreduce import astrometry
+from . import misc
+from . import io
+from . import grids
+from . import sigmas
+from . import astrometry
 
 Quality = namedtuple('Quality', 'niter chisq npoints npars')
 
@@ -381,7 +381,7 @@ class CoarseDecorVmag(object):
         """ Perform the coarse decorrelation."""
 
         # Set up the IO and coordinate grids.
-        self.f = bringio.PhotFile(self.photfile)
+        self.f = io.PhotFile(self.photfile)
         self.camgrid = grids.PolarGrid(self.camnx, self.camny)
         self.ipxgrid = grids.PolarGrid(self.ipxnx, self.ipxny)
         
@@ -397,7 +397,7 @@ class CoarseDecorVmag(object):
             hg = grids.HealpixGrid(8)
         except:
             print 'Failed to create instance of HealpixGrid, using catalogue look-up instead.'
-            self.skyidx = bringio.read_skyidx(self.stars['ascc'])
+            self.skyidx = io.read_skyidx(self.stars['ascc'])
         else:
             print 'Using healpy for sky-index generation.'
             self.skyidx = hg.radec2idx(self.stars['ra'], self.stars['dec'])

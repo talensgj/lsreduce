@@ -12,7 +12,7 @@ import numpy as np
 
 from astropy.io import fits
 
-from . import bringio
+from . import io
 from . import stacking
 from . import astrometry
 from . import photometry
@@ -20,7 +20,7 @@ from . import configuration as cfg
 from . import misc
 from . import sigmas
 
-log = logging.getLogger('bringreduce')
+log = logging.getLogger('lsreduce')
 
 ###############################################################################
 ### Helper functions.
@@ -101,7 +101,7 @@ def reduce_dark_frames(camid, filelist, dirtree, darktables, nmin=cfg.mindarks):
     log.info('Received {} dark frames.'.format(len(filelist)))
     
     # Read the files.
-    stack, headers = bringio.read_stack(filelist)
+    stack, headers = io.read_stack(filelist)
 
     if (len(stack) == 0):
         log.warn('No images were succesfully read.')
@@ -128,8 +128,8 @@ def reduce_dark_frames(camid, filelist, dirtree, darktables, nmin=cfg.mindarks):
     
         log.info('Saving long masterdark to {}'.format(filename))    
     
-        bringio.write_masterdark(filename, masterdark, header)
-        #bringio.update_darktable(filename, darktables[0])
+        io.write_masterdark(filename, masterdark, header)
+        #io.update_darktable(filename, darktables[0])
         log.warn('Running with standard dark, not updating darktable.')
     else:
         log.info('Not enough valid long darks.')
@@ -147,8 +147,8 @@ def reduce_dark_frames(camid, filelist, dirtree, darktables, nmin=cfg.mindarks):
         
         log.info('Saving short masterdark to {}'.format(filename))        
         
-        bringio.write_masterdark(filename, masterdark, header)
-        #bringio.update_darktable(filename, darktables[1])
+        io.write_masterdark(filename, masterdark, header)
+        #io.update_darktable(filename, darktables[1])
         log.warn('Running with standard dark, not updating darktable.')
     else:
         log.info('Not enough valid short darks.')
@@ -222,7 +222,7 @@ def preprocess(stack, headers, darktables):
         if not np.all(test):
             log.warn('Detected {} long files with deviant exposure times.'.format(sum(~test)))
         
-        masterdark, darkheader = bringio.read_masterdark(darktables[0])
+        masterdark, darkheader = io.read_masterdark(darktables[0])
         station['darkfile'][longidx] = darkheader['LSTSEQ'] 
         stack[longidx] = stack[longidx] - masterdark
         
@@ -233,7 +233,7 @@ def preprocess(stack, headers, darktables):
         if not np.all(test):
             log.warn('Detected {} short files with deviant exposure times.'.format(sum(~test)))        
         
-        masterdark, darkheader = bringio.read_masterdark(darktables[1])
+        masterdark, darkheader = io.read_masterdark(darktables[1])
         station['darkfile'][shortidx] = darkheader['LSTSEQ']
         stack[shortidx] = stack[shortidx] - masterdark
     
@@ -397,8 +397,8 @@ def live_calibration(station, curves, cat, systable):
     ha = astrometry.ra2ha(ra, lst)
     
     # Open the latest systematics file.
-    sysfile = bringio.get_sysfile(systable)
-    f = bringio.SysFile(sysfile)  
+    sysfile = io.get_sysfile(systable)
+    f = io.SysFile(sysfile)  
     
     # Compute the magnitude calibration.
     ascc, nobs, _, sigma = f.read_magnitudes() 
@@ -430,7 +430,7 @@ def live_calibration(station, curves, cat, systable):
     lstmax = np.amax(station['lstseq'])
     lstlen = lstmax - lstmin + 1
     lstidx = curves['lstseq'] - lstmin   
-    skyidx = bringio.read_skyidx(curves['ascc'])  
+    skyidx = io.read_skyidx(curves['ascc'])  
     
     # Compute the cloud calibrations.
     mask = (curves['pflag'] == 0) & (curves['aflag'] == 0) & np.isfinite(sys)
@@ -558,14 +558,14 @@ def reduce_science_frames(camid, filelist, siteinfo, dirtree, darktables, astrom
     log.info('Received {} science frames.'.format(len(filelist)))  
     
     # Read the catalogue.
-    cat = bringio.read_catalogue()     
+    cat = io.read_catalogue()     
     
     # Initialize the astrometry.
-    wcspars, polpars = bringio.read_astromaster(astromaster)
+    wcspars, polpars = io.read_astromaster(astromaster)
     astro = astrometry.Astrometry(wcspars, polpars)         
     
     # Read the files.
-    stack, headers = bringio.read_stack(filelist)
+    stack, headers = io.read_stack(filelist)
 
     if (len(stack) == 0):
         log.warn('No images were succesfully read.')
@@ -603,7 +603,7 @@ def reduce_science_frames(camid, filelist, siteinfo, dirtree, darktables, astrom
     
     log.info('Saving the live calibration to {}'.format(filename))
     
-    bringio.tmp_clouds(filename, nobs, clouds, sigma, lstmin, lstmax, lstlen)
+    io.tmp_clouds(filename, nobs, clouds, sigma, lstmin, lstmax, lstlen)
 
     # Save the fast lightcurves.
     filename = 'tmp_fast{:08d}.hdf5'.format(station[0]['lstseq'])        
@@ -611,14 +611,14 @@ def reduce_science_frames(camid, filelist, siteinfo, dirtree, darktables, astrom
     
     log.info('Saving fast photometry to {}'.format(filename))    
     
-    f = bringio.TmpFile(filename) 
+    f = io.TmpFile(filename) 
     f.add_header(headers[0], siteinfo, cfg.aper_fast, cfg.skyrad)      
     f.add_station(station)    
     f.add_lightcurves(fast_curves, cat)  
     f.add_astrometry(astrosol)
     
     # Create postage stamps.
-    targets = bringio.read_targets(cfg.targets)
+    targets = io.read_targets(cfg.targets)
     for key in targets.keys():
         
         log.info('Trying to make postage stamps for target group {}'.format(key))     
@@ -635,7 +635,7 @@ def reduce_science_frames(camid, filelist, siteinfo, dirtree, darktables, astrom
             
             log.info('Saving postage stamps for target group {} to {}'.format(key, filename))             
             
-            bringio.write_stamps(filename, stamps, stamp_curves, station, cat)
+            io.write_stamps(filename, stamps, stamp_curves, station, cat)
             
         else:
             log.info('No stars present for target group {}'.format(key))
@@ -659,7 +659,7 @@ def reduce_science_frames(camid, filelist, siteinfo, dirtree, darktables, astrom
         
         log.info('Saving binned image to {}'.format(filename))        
         
-        bringio.write_binimage(filename, binimage, binheader)
+        io.write_binimage(filename, binimage, binheader)
     
     shortidx, nshort = select_short(station['lstseq'])
     if (nshort > 0):
@@ -676,7 +676,7 @@ def reduce_science_frames(camid, filelist, siteinfo, dirtree, darktables, astrom
         
         log.info('Saving binned image to {}'.format(filename))        
         
-        bringio.write_binimage(filename, binimage, binheader)   
+        io.write_binimage(filename, binimage, binheader)   
     
     binstack = np.array(binstack)
     
@@ -696,7 +696,7 @@ def reduce_science_frames(camid, filelist, siteinfo, dirtree, darktables, astrom
     
     log.info('Saving slow photometry to {}'.format(filename))        
     
-    f = bringio.TmpFile(filename) 
+    f = io.TmpFile(filename) 
     f.add_header(headers[0], siteinfo, cfg.aper_slow, cfg.skyrad)       
     f.add_station(binstation)    
     f.add_lightcurves(slow_curves, cat)       

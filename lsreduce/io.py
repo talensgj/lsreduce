@@ -21,7 +21,7 @@ from astropy.io import fits
 from . import configuration as cfg
 from . import grids
 
-log = logging.getLogger('bringreduce')
+log = logging.getLogger('lsreduce')
 
 _archivequeue = Queue.Queue()
 _archiverclosed = True
