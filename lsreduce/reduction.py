@@ -26,20 +26,6 @@ log = logging.getLogger('lsreduce')
 ### Helper functions.
 ###############################################################################
 
-def select_long(lstseq):
-    
-    longidx, = np.where(lstseq%2 == 0)    
-    nlong = len(longidx)    
-    
-    return longidx, nlong
-    
-def select_short(lstseq):
-    
-    shortidx, = np.where(lstseq%2 == 1)    
-    nshort = len(shortidx)       
-    
-    return shortidx, nshort
-
 def headers2recarray(headers, fields):
     
     nimages = len(headers)
@@ -95,7 +81,7 @@ def combine_darks(stack, headers):
     
     return masterdark, header
     
-def reduce_dark_frames(camid, filelist, dirtree, darktables, nmin=cfg.mindarks):
+def reduce_dark_frames(camid, filelist, dirtree, darktable, nmin=cfg.mindarks):
     """ Create masterdarks from the short and long exposures. """    
     
     log.info('Received {} dark frames.'.format(len(filelist)))
@@ -116,42 +102,23 @@ def reduce_dark_frames(camid, filelist, dirtree, darktables, nmin=cfg.mindarks):
     headers = headers2recarray(headers, fields)
 
     # Select the long exposures.    
-    longidx, nlong = select_long(headers['LSTSEQ'])
-    if (nlong >= nmin):   
+    ndarks = len(stack)
+    if (ndarks >= nmin):   
         
-        log.info('Creating long masterdark from {} exposures.'.format(nlong))
+        log.info('Creating masterdark from {} exposures.'.format(ndarks))
     
-        masterdark, header = combine_darks(stack[longidx], headers[longidx])    
+        masterdark, header = combine_darks(stack, headers)    
     
         filename = '{:08d}{}masterdark.fits'.format(header['LSTSEQ'], camid)
         filename = os.path.join(dirtree['binned'], filename)
     
-        log.info('Saving long masterdark to {}'.format(filename))    
+        log.info('Saving masterdark to {}'.format(filename))    
     
         io.write_masterdark(filename, masterdark, header)
         #io.update_darktable(filename, darktables[0])
         log.warn('Running with standard dark, not updating darktable.')
     else:
-        log.info('Not enough valid long darks.')
-    
-    # Select the short exposures.
-    shortidx, nshort = select_short(headers['LSTSEQ'])
-    if (nshort >= nmin):    
-    
-        log.info('Creating short masterdark from {} exposures.'.format(nshort))   
-        
-        masterdark, header = combine_darks(stack[shortidx], headers[shortidx]) 
-        
-        filename = '{:08d}{}masterdark.fits'.format(header['LSTSEQ'], camid)
-        filename = os.path.join(dirtree['binned'], filename)
-        
-        log.info('Saving short masterdark to {}'.format(filename))        
-        
-        io.write_masterdark(filename, masterdark, header)
-        #io.update_darktable(filename, darktables[1])
-        log.warn('Running with standard dark, not updating darktable.')
-    else:
-        log.info('Not enough valid short darks.')
+        log.info('Not enough valid darks.')
         
     return
     
@@ -159,7 +126,7 @@ def reduce_dark_frames(camid, filelist, dirtree, darktables, nmin=cfg.mindarks):
 ### Functions for reducing science frames.
 ###############################################################################    
    
-def preprocess(stack, headers, darktables):
+def preprocess(stack, headers, darktable):
     
     import datetime    
     
@@ -214,28 +181,10 @@ def preprocess(stack, headers, darktables):
         
     stack = stack.astype('float32')        
         
-    # Subtract the masterdarks.
-    longidx, nlong = select_long(station['lstseq'])
-    if (nlong > 0):
-        
-        test = (np.abs(station['exptime'][longidx] - 6.383) < 1e-3)
-        if not np.all(test):
-            log.warn('Detected {} long files with deviant exposure times.'.format(sum(~test)))
-        
-        masterdark, darkheader = io.read_masterdark(darktables[0])
-        station['darkfile'][longidx] = darkheader['LSTSEQ'] 
-        stack[longidx] = stack[longidx] - masterdark
-        
-    shortidx, nshort = select_short(station['lstseq'])
-    if (nshort > 0):       
-        
-        test = (np.abs(station['exptime'][shortidx] - 2.541) < 1e-3)
-        if not np.all(test):
-            log.warn('Detected {} short files with deviant exposure times.'.format(sum(~test)))        
-        
-        masterdark, darkheader = io.read_masterdark(darktables[1])
-        station['darkfile'][shortidx] = darkheader['LSTSEQ']
-        stack[shortidx] = stack[shortidx] - masterdark
+    # Subtract the masterdark.
+    masterdark, darkheader = io.read_masterdark(darktable)
+    station['darkfile'] = darkheader['LSTSEQ'] 
+    stack = stack - masterdark
     
     # Remove the overscan region.
     stack = stack[:,ly:uy,lx:ux]
