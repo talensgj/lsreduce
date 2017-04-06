@@ -485,52 +485,6 @@ def binned_image(stack, station, header, astro):
     
     return binimage, binheader
 
-#def postage_stamps(ascc, stack, station, astro, cat, nhalf=cfg.nhalf):
-    
-    #nstars = len(ascc)
-    #nimages, ny, nx = stack.shape 
-
-    ## Get catalogue entries for the target stars. 
-    #idx = np.searchsorted(cat['ascc'], ascc)  
-    #tmpcat = cat[idx]        
-    
-    #stamps = {'ascc':[], 'lstseq':[], 'stamps':[]}
-    #for i in range(nimages):      
-    
-        #for j in range(nstars):
-            
-            ## Compute position of the star.
-            #x, y, mask = astro.world2pix(station[i]['lst'], tmpcat['ra'][j], tmpcat['dec'][j])        
-            
-            #if mask:
-                
-                #xi, yi = np.around(x), np.around(y) 
-                
-                #lx = int(xi - nhalf)
-                #ux = int(xi + nhalf + 1)
-                #ly = int(yi - nhalf)
-                #uy = int(yi + nhalf + 1)
-                
-                #if (lx < 0) | (ux > nx) | (ly < 0) | (uy > ny):
-                    #continue                 
-                
-                #stamps['ascc'].append(ascc[j])
-                #stamps['lstseq'].append(station[i]['lstseq'])
-                #stamps['stamps'].append(stack[i,ly:uy,lx:ux])
-    
-    ## Convert lists to arrays.        
-    #stamps['ascc'] = np.array(stamps['ascc'], dtype='|S32')
-    #stamps['lstseq'] = np.array(stamps['lstseq'], dtype='uint32')
-    #stamps['stamps'] = np.array(stamps['stamps'], dtype='float32')
-    
-    ## Sort the arrays.
-    #sort = np.lexsort((stamps['lstseq'], stamps['ascc']))
-    #stamps['ascc'] = stamps['ascc'][sort]
-    #stamps['lstseq'] = stamps['lstseq'][sort]
-    #stamps['stamps'] = stamps['stamps'][sort]    
-    
-    #return stamps
-
 def postage_stamps(curves, stack, station, nhalf=cfg.nhalf):
     
     npoints = len(curves)  
