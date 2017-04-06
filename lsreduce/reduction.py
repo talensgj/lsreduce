@@ -552,7 +552,7 @@ def postage_stamps(curves, stack, station, nhalf=cfg.nhalf):
     
     return stamps
 
-def reduce_science_frames(camid, filelist, siteinfo, dirtree, darktables, astromaster, systable):
+def reduce_science_frames(camid, filelist, siteinfo, dirtree, darktable, astromaster, systable):
     """ Process the raw data to produce lightcurves and binned images. """    
     
     log.info('Received {} science frames.'.format(len(filelist)))  
@@ -572,19 +572,13 @@ def reduce_science_frames(camid, filelist, siteinfo, dirtree, darktables, astrom
         return
 
     # Preprocess the files.
-    stack, station = preprocess(stack, headers, darktables) 
+    stack, station = preprocess(stack, headers, darktable) 
 
     # Perform astrometry.
-    longidx, nlong = select_long(station['lstseq'])
-    if (nlong > 0):
-        select = (cat['vmag'] <= cfg.maglim_astro) & (cat['vmag'] > 4.)           
-        ra, dec = cat['ra'][select], cat['dec'][select]   
-             
-        aflag, astrosol = astro.solve(stack[longidx][0], station[longidx][0], ra, dec) 
-        
-    else:
-        aflag = 8
-        astrosol = dict()
+    select = (cat['vmag'] <= cfg.maglim_astro) & (cat['vmag'] > 4.)           
+    ra, dec = cat['ra'][select], cat['dec'][select]   
+         
+    aflag, astrosol = astro.solve(stack[0], station[0], ra, dec) 
     
     # Add sun and moon information.
     station = sunmoon2station(station, siteinfo, astro)    
@@ -643,42 +637,20 @@ def reduce_science_frames(camid, filelist, siteinfo, dirtree, darktables, astrom
     # Create binned images.
     binstack = [] 
     binheaders = []
-    
-    longidx, nlong = select_long(station['lstseq'])
-    if (nlong > 0):
 
-        log.info('Creating binned image from {} long eposures.'.format(nlong))        
-        
-        binimage, binheader = binned_image(stack[longidx], station[longidx], headers[0], astro)
-            
-        binstack.append(binimage) 
-        binheaders.append(binheader)         
-            
-        filename = 'bin_{:08d}{}.fits.gz'.format(binheader['lstseq'], camid)
-        filename = os.path.join(dirtree['binned'], filename)
-        
-        log.info('Saving binned image to {}'.format(filename))        
-        
-        io.write_binimage(filename, binimage, binheader)
+    log.info('Creating binned image from {} exposures.'.format(len(stack)))        
     
-    shortidx, nshort = select_short(station['lstseq'])
-    if (nshort > 0):
-
-        log.info('Creating binned image from {} short exposures.'.format(nshort))        
+    binimage, binheader = binned_image(stack, station, headers[0], astro)
         
-        binimage, binheader = binned_image(stack[shortidx], station[shortidx], headers[0], astro)
-            
-        binstack.append(binimage)  
-        binheaders.append(binheader)
-            
-        filename = 'bin_{:08d}{}.fits.gz'.format(binheader['lstseq'], camid)
-        filename = os.path.join(dirtree['binned'], filename)
-        
-        log.info('Saving binned image to {}'.format(filename))        
-        
-        io.write_binimage(filename, binimage, binheader)   
+    filename = 'bin_{:08d}{}.fits.gz'.format(binheader['lstseq'], camid)
+    filename = os.path.join(dirtree['binned'], filename)
     
-    binstack = np.array(binstack)
+    log.info('Saving binned image to {}'.format(filename))        
+    
+    io.write_binimage(filename, binimage, binheader) 
+    
+    binheaders = [binheader]
+    binstack = np.array([binimage])
     
     fields = {'lstseq':'uint32', 'nimages':'uint8', 'exptime':'float32',
               'lst':'float64', 'jd':'float64', 'lstmid':'float64', 'jdmid':'float64'}
