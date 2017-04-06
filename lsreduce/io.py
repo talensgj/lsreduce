@@ -216,28 +216,6 @@ def write_astromaster(filename, wcspars, polpars):
         
     return      
     
-#def read_catalogue(starcat=cfg.starcat):
-#    
-#    catalogue = dict()
-#
-#    data = fits.getdata(starcat) 
-#    
-#    catalogue['ascc'] = data['ASCC']
-#    catalogue['ra'] = data['_RAJ2000']
-#    catalogue['dec'] = data['_DEJ2000']
-#    catalogue['vmag'] = data['Vmag']
-#    catalogue['bmag'] = data['Bmag']
-#    catalogue['sptype'] = data['SpType']
-#    catalogue['blend'] = data['blend']
-#    catalogue['var'] = data['Flag']
-#    
-#    catalogue = np.rec.fromarrays([catalogue[key] for key in catalogue.keys()], names=[key for key in catalogue.keys()])    
-#    
-#    sort = np.argsort(catalogue['ascc'])
-#    catalogue = catalogue[sort]
-#    
-#    return catalogue
-    
 def read_catalogue(starcat=cfg.starcat):
     
     catalogue = dict()
