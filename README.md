@@ -1,2 +1,2 @@
-# bringreduce
-bRING Reduction Software
+# lsreduce
+La Silla Reduction Software
