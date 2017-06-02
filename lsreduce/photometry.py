@@ -11,9 +11,106 @@ import bottleneck as bt
  
 import logging
 
+def simple_sky(sky):
+
+    skymed = bt.median(sky)
+    skymean = bt.nanmean(sky)
+    skymod = 3.*skymed - 2.*skymean
+    skystd = bt.nanstd(sky)
+    
+    return skymod, skystd, len(sky)
+
+def mmm(sky, minsky=20, maxiter=50, badpixval=None):
+    
+    # Remove bad values and sort.
+    sky = sky[np.isfinite(sky)]
+    sky = np.sort(sky)  
+    
+    nsky = len(sky)
+    if len(sky) < minsky:
+        return -1., -1., 0.
+    
+    # Determine window for robust computations.
+    skymid = .5*sky[nsky/2] + .5*sky[(nsky-1)/2]   
+    cut = min([skymid - sky[0], sky[-1] - skymid]) 
+    if badpixval is not None:
+        cut = min([cut, badpixval - skymid])
+    
+    cut1 = skymid - cut 
+    cut2 = skymid + cut
+    
+    idx1 = np.searchsorted(sky, cut1)    
+    idx2 = np.searchsorted(sky, cut2)
+    
+    if (idx2 - idx1) < minsky:
+        return -1., -1., 0.
+    
+    # Get statistics.
+    skymed = 0.5*sky[(idx1 + idx2)/2] + 0.5*sky[(idx1 + idx2 - 1)/2]
+    skymn = bt.nanmean(sky[idx1:idx2])       
+    sigma = bt.nanstd(sky[idx1:idx2])         
+    
+    if (skymed < skymn):
+        skymod = 3.*skymed - 2.*skymn
+    else:        
+        skymod = skymn        
+       
+    # Iteratively refine.
+    old = 0
+    clamp = 1
+    idx1_old = idx1
+    idx2_old = idx2
+    for niter in range(maxiter):
+        
+        # Determine window for robust computations.
+        r = np.log10(idx2 - idx1)
+        r = max([ 2., (-0.1042*r + 1.1695)*r + 0.8895])
+        
+        cut = r*sigma + 0.5*np.abs(skymn - skymod)   
+        cut1 = skymod - cut
+        cut2 = skymod + cut    
+        
+        idx1 = np.searchsorted(sky, cut1)    
+        idx2 = np.searchsorted(sky, cut2)  
+        
+        if (idx2 - idx1) < minsky:
+            return -1., -1., 0.    
+    
+        skymn = bt.nanmean(sky[idx1:idx2])       
+        sigma = bt.nanstd(sky[idx1:idx2]) 
+    
+        # Use the mean of the central 20% as the median.
+        center = (idx1 + idx2 - 1)/2.
+        side = round(0.2*(idx2 - idx1))/2.
+        
+        j = np.ceil(center - side).astype('int')
+        k = np.floor(center + side + 1).astype('int')
+        
+        skymed = bt.nanmean(sky[j:k])
+        
+        # Update the mode.
+        if (skymed < skymn):
+            dmod = 3.*skymed - 2.*skymn - skymod
+        else:
+            dmod = skymn - skymod
+            
+        if (dmod*old < 0):
+            clamp = 0.5*clamp
+            
+        skymod = skymod + clamp*dmod 
+        old = dmod  
+        
+        if (idx1 == idx1_old) & (idx2 == idx2_old):
+            break
+        
+        idx1_old = idx1
+        idx2_old = idx2
+    
+    return skymod, sigma, idx2 - idx1
+
 class Photometry(object):
     
-    def __init__(self, aper, sky, phpadu=.62, badpixval=63000.):
+    def __init__(self, aper, sky, phpadu=.62, badpixval=63000., quick_sky=False):
         """ 
         Class for repeatedly performing aperture photometry.
             
@@ -34,6 +131,7 @@ class Photometry(object):
         self.sky = sky 
         self.phpadu = phpadu
         self.badpixval = badpixval
+        self.quick_sky = quick_sky
         
         nhalf = np.amax(sky)
         nhalf = np.ceil(nhalf)
@@ -140,17 +238,17 @@ class Photometry(object):
                 flag[i] += 2
 
             # Compute sky value.
-            skymed = bt.median(skydonut)
-            skymean = bt.nanmean(skydonut)
-            skymod = 3.*skymed - 2.*skymean
-            skystd = bt.nanstd(skydonut)
+            if self.quick_sky:
+                skymod, skystd, nsky = simple_sky(skydonut)
+            else:
+                skymod, skystd, nsky = mmm(skydonut, badpixval=self.badpixval)
              
             # Check for negative sky values.
             if (skymod < 0):
                 flag[i] += 4
              
             skyvar = skystd**2 # Sky variance  
-            sigsq = skyvar/bt.nansum(mask) 
+            sigsq = skyvar/nsky
             
             sky[i] = skymod
             esky[i] = skystd
