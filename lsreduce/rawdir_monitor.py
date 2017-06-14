@@ -154,13 +154,20 @@ def build_dirtree(date, camid):
             
     return dirtree
 
-def parse_files(filelist, nscience, ndark):
+def parse_files(filelist, nscience, nbias, ndark, nflat):
     
     filelist = np.sort(filelist)
 
-    # Separate dark and science frames.
+    # Separate calibration and science frames.
+    bias_frames = [filename for filename in filelist if 'bias' in filename]
     dark_frames = [filename for filename in filelist if 'dark' in filename]
-    science_frames = [filename for filename in filelist if 'dark' not in filename]
+    flat_frames = [filename for filename in filelist if 'flat' in filename]
+    
+    filelist = [filename for filename in filelist if 'bias' not in filename]
+    filelist = [filename for filename in filelist if 'dark' not in filename]
+    filelist = [filename for filename in filelist if 'flat' not in filename]
+    
+    science_frames = filelist
     
     if (len(science_frames) > 0):    
     
@@ -175,11 +182,13 @@ def parse_files(filelist, nscience, ndark):
         
         nim = 0
 
-    remainder = dark_frames[ndark:] + science_frames[nim:]
+    bias_frames = bias_frames[:nbias]
     dark_frames = dark_frames[:ndark]
-    science_frames = science_frames[:nim]    
+    flat_frames = flat_frames[:nflat]
+    science_frames = science_frames[:nim]  
+    remainder = bias_frames[nbias:] + dark_frames[ndark:] + flat_frames[nflat:] + science_frames[nim:]
     
-    return science_frames, dark_frames, remainder
+    return science_frames, bias_frames, dark_frames, flat_frames, remainder
 
 def rereduce(rawdir, outdir, nscience=50, ndark=50):
 
@@ -222,9 +231,9 @@ def rereduce(rawdir, outdir, nscience=50, ndark=50):
         except:
             log.warn('Directory exists, {}'.format(dirtree[key])) 
 
-    # Get the siteinfo, darktables and astrometry.
+    # Get the siteinfo, darktable and astrometry.
     siteinfo = io.read_siteinfo(cfg.siteinfo, cfg.sitename)
-    darktables = cfg.darktables[camid] 
+    darktable = cfg.darktable[camid] 
     astromaster = cfg.astromaster[camid]
 
     # Get the files to be processed.
@@ -237,32 +246,34 @@ def rereduce(rawdir, outdir, nscience=50, ndark=50):
 
         if (len(dark_frames) > 0):
 
-            reduction.reduce_dark_frames(camid, dark_frames, dirtree, darktables)
+            reduction.reduce_dark_frames(camid, dark_frames, dirtree, darktable)
 
         if (len(science_frames) > 0):
 
-            reduction.reduce_science_frames(camid, science_frames, siteinfo, dirtree, darktables, astromaster)
+            reduction.reduce_science_frames(camid, science_frames, siteinfo, dirtree, darktable, astromaster)
             
     # Combine temporary lightcurve files.
     combine_temporary_files(date, camid, dirtree)
 
     return
 
-def rawdir_monitor(camid, twilight=5, nscience=50, ndark=50, timeout=10, step=6.4):    
+def rawdir_monitor(camid, twilight=5, nscience=50, nbias=20, ndark=20, nflat=20, timeout=10, step=6.4):    
 
     log = logging.getLogger('lsreduce')
     log.info('Initializing main reduction loop for camera {}.'.format(camid))    
     
     # Set up the listener.
     siteinfo = io.read_siteinfo(cfg.siteinfo, cfg.sitename)
-    darktables = cfg.darktables[camid] 
+    darktable = cfg.darktable[camid] 
     astromaster = cfg.astromaster[camid]
     systable = cfg.systable[camid]
     rawdir = cfg.rawdir
     
     in_queue = set()
     day_tasks_finished = True
+    bias_time = 0
     dark_time = 0
+    flat_time = 0
     science_time = 0
     
     # See if the reduction is being restarted.
@@ -333,12 +344,33 @@ def rawdir_monitor(camid, twilight=5, nscience=50, ndark=50, timeout=10, step=6.
         
             # Parse files.
             log.info('Parsing files.')
-            science_frames, dark_frames, remainder = parse_files(new_files, nscience, ndark)        
-            log.debug('{}, {}'.format(dark_time, science_time))
+            science_frames, bias_frames, dark_frames, flat_frames, remainder = parse_files(new_files, nscience, nbias, ndark, nflat)        
+            log.debug('{}, {}, {}, {}'.format(bias_time, dark_time, flat_time, science_time))
+            
+            if (len(bias_frames) == nbias) | (bias_time >= (nbias + timeout)):
+                
+                # Reduce the frames.
+                reduction.reduce_bias_frames(camid, bias_frames, dirtree)
+                
+                # Archive the files.
+                in_queue.update(bias_frames)
+                io.write_in_queue(queuefile, in_queue)
+                io.archive_files(bias_frames, dirtree['rawarchive'])
+
+                bias_time = 0
+                
+            elif (len(bias_frames) > 0):
+                
+                if (bias_time == 0):
+                    bias_time = len(bias_frames)
+                else:
+                    bias_time += 1
+            
+            
             if (len(dark_frames) == ndark) | (dark_time >= (ndark + timeout)):
                 
                 # Reduce the frames.
-                reduction.reduce_dark_frames(camid, dark_frames, dirtree, darktables)
+                reduction.reduce_dark_frames(camid, dark_frames, dirtree, darktable)
                 
                 # Archive the files.
                 in_queue.update(dark_frames)
@@ -353,11 +385,30 @@ def rawdir_monitor(camid, twilight=5, nscience=50, ndark=50, timeout=10, step=6.
                     dark_time = len(dark_frames)
                 else:
                     dark_time += 1
+                    
+            if (len(flat_frames) == nflat) | (flat_time >= (nflat + timeout)):
+                
+                # Reduce the frames.
+                reduction.reduce_flat_frames(camid, flat_frames, dirtree, darktable)
+                
+                # Archive the files.
+                in_queue.update(flat_frames)
+                io.write_in_queue(queuefile, in_queue)
+                io.archive_files(flat_frames, dirtree['rawarchive'])
+
+                flat_time = 0
+                
+            elif (len(flat_frames) > 0):
+                
+                if (flat_time == 0):
+                    flat_time = len(flat_frames)
+                else:
+                    flat_time += 1
         
             if (len(science_frames) == nscience) | (science_time >= (nscience + timeout)):
                 
                 # Reduce the frames.
-                reduction.reduce_science_frames(camid, science_frames, siteinfo, dirtree, darktables, astromaster, systable)
+                reduction.reduce_science_frames(camid, science_frames, siteinfo, dirtree, darktable, astromaster, systable)
 
                 # Archive the files.
                 in_queue.update(science_frames)
@@ -381,20 +432,38 @@ def rawdir_monitor(camid, twilight=5, nscience=50, ndark=50, timeout=10, step=6.
             while (len(new_files) > 0):            
             
                 # Parse files.
-                science_frames, dark_frames, new_files = parse_files(new_files, nscience, ndark)
+                science_frames, bias_frames, dark_frames, flat_frames, remainder = parse_files(new_files, nscience, nbias, ndark, nflat)
+            
+                if (len(bias_frames) > 0):
+                    
+                    reduction.reduce_bias_frames(camid, bias_frames, dirtree)
+                    
+                    # Archive the files.
+                    in_queue.update(bias_frames)  
+                    io.write_in_queue(queuefile, in_queue)
+                    io.archive_files(bias_frames, dirtree['rawarchive'])            
             
                 if (len(dark_frames) > 0):
                     
-                    reduction.reduce_dark_frames(camid, dark_frames, dirtree, darktables)
+                    reduction.reduce_dark_frames(camid, dark_frames, dirtree, darktable)
                     
                     # Archive the files.
                     in_queue.update(dark_frames)  
                     io.write_in_queue(queuefile, in_queue)
                     io.archive_files(dark_frames, dirtree['rawarchive'])
+                    
+                if (len(flat_frames) > 0):
+                    
+                    reduction.reduce_flat_frames(camid, flat_frames, dirtree, darktable)
+                    
+                    # Archive the files.
+                    in_queue.update(flat_frames)  
+                    io.write_in_queue(queuefile, in_queue)
+                    io.archive_files(flat_frames, dirtree['rawarchive']) 
             
                 if (len(science_frames) > 0):
                     
-                    reduction.reduce_science_frames(camid, science_frames, siteinfo, dirtree, darktables, astromaster, systable)
+                    reduction.reduce_science_frames(camid, science_frames, siteinfo, dirtree, darktable, astromaster, systable)
                     
                     # Archive the files.
                     in_queue.update(science_frames)
@@ -423,7 +492,9 @@ def rawdir_monitor(camid, twilight=5, nscience=50, ndark=50, timeout=10, step=6.
             # Reset.
             day_tasks_finished = True
             science_time = 0
+            bias_time = 0
             dark_time = 0
+            flat_time = 0
             in_queue = set()               
             
         elif day_tasks_finished:

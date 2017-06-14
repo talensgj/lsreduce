@@ -110,7 +110,7 @@ def read_targets(filename):
     
     return targets
   
-def write_masterdark(filename, image, header, overwrite=True):
+def write_masterframe(filename, image, header, overwrite=True):
     
     image = image.astype('float32')    
     

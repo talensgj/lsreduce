@@ -56,6 +56,31 @@ def expand_recarray(array, fields):
 ### Functions for reducing dark frames.
 ############################################################################### 
 
+def combine_bias(stack, headers):
+    """ Create a masterbias. """
+    
+    nbias = len(stack)
+    
+    # Create the master bias.
+    masterbias = np.nanmean(stack, axis=0)
+    
+    # Create the header of the masterdark.
+    header = fits.Header()    
+    header['NOBS'] = (nbias, 'Number of images used')
+    header['METHOD'] = ('mean', 'Method used to combine the images')   
+    header['SITE-OBS'] = (headers[0]['SITE-OBS'], 'Observation site')
+    header['CAMERA'] = (headers[0]['CAMERA'], 'Camera name on site')
+    header['IMAGETYP'] = ('MASTERBIAS', 'Type of image')
+    header['EXPTIME'] = (np.mean(headers['EXPTIME']), 'Exposure time in seconds')
+    header['CCDTEMP'] = (np.mean(headers['CCDTEMP']), 'Average CCD temperature (C)')
+    header['LSTSEQ'] = (headers[0]['LSTSEQ'], 'Exposure num of first frame used')  
+    header['X0'] = headers[0]['X0']
+    header['XSIZE'] = headers[0]['XSIZE']
+    header['Y0'] = headers[0]['Y0']
+    header['YSIZE'] = headers[0]['YSIZE']
+    
+    return masterbias, header
+
 def combine_darks(stack, headers):
     """ Create a masterdark. """    
     
@@ -81,8 +106,74 @@ def combine_darks(stack, headers):
     
     return masterdark, header
     
+def combine_flats(stack, headers, dark):
+    """ Create a masterflat. """
+    
+    nflat = len(stack)
+    
+    # Create the master flat.
+    stack = stack - dark
+    stack = stack/np.nanmean(stack, axis=(1,2), keepdims=True)
+    masterflat = np.nanmean(stack, axis=0)
+    
+    # Create the header of the masterflat.
+    header = fits.Header()    
+    header['NOBS'] = (nflat, 'Number of images used')
+    header['METHOD'] = ('mean', 'Method used to combine the images')   
+    header['SITE-OBS'] = (headers[0]['SITE-OBS'], 'Observation site')
+    header['CAMERA'] = (headers[0]['CAMERA'], 'Camera name on site')
+    header['IMAGETYP'] = ('MASTERFLAT', 'Type of image')
+    header['EXPTIME'] = (np.mean(headers['EXPTIME']), 'Exposure time in seconds')
+    header['CCDTEMP'] = (np.mean(headers['CCDTEMP']), 'Average CCD temperature (C)')
+    header['LSTSEQ'] = (headers[0]['LSTSEQ'], 'Exposure num of first frame used')  
+    header['X0'] = headers[0]['X0']
+    header['XSIZE'] = headers[0]['XSIZE']
+    header['Y0'] = headers[0]['Y0']
+    header['YSIZE'] = headers[0]['YSIZE']
+    
+    return masterflat, header
+    
+def reduce_bias_frames(camid, filelist, dirtree, nmin=cfg.minbias):
+    """ Create a masterbias. """    
+    
+    log.info('Received {} bias frames.'.format(len(filelist)))
+    
+    # Read the files.
+    stack, headers = io.read_stack(filelist)
+
+    if (len(stack) == 0):
+        log.warn('No images were succesfully read.')
+        return
+
+    # Create a recarray containing the required header fields.
+    fields = {'LSTSEQ':'uint32', 'JD':'float64', 'LST':'float64',
+              'EXPTIME':'float32', 'CCDTEMP':'float32',
+              'SITE-OBS':'|S20', 'CAMERA':'|S1',
+              'X0':'uint16', 'XSIZE':'uint16',
+              'Y0':'uint16', 'YSIZE':'uint16'}
+    headers = headers2recarray(headers, fields)
+   
+    nbias = len(stack)
+    if (nbias >= nmin):   
+        
+        log.info('Creating masterbias from {} exposures.'.format(nbias))
+    
+        masterbias, header = combine_bias(stack, headers)    
+    
+        filename = '{:08d}{}masterbias.fits'.format(header['LSTSEQ'], camid)
+        filename = os.path.join(dirtree['binned'], filename)
+    
+        log.info('Saving masterbias to {}'.format(filename))    
+    
+        io.write_masterframe(filename, masterbias, header)
+
+    else:
+        log.info('Not enough valid bias frames.')
+        
+    return    
+    
 def reduce_dark_frames(camid, filelist, dirtree, darktable, nmin=cfg.mindarks):
-    """ Create masterdarks from the short and long exposures. """    
+    """ Create a masterdark. """    
     
     log.info('Received {} dark frames.'.format(len(filelist)))
     
@@ -100,8 +191,7 @@ def reduce_dark_frames(camid, filelist, dirtree, darktable, nmin=cfg.mindarks):
               'X0':'uint16', 'XSIZE':'uint16',
               'Y0':'uint16', 'YSIZE':'uint16'}
     headers = headers2recarray(headers, fields)
-
-    # Select the long exposures.    
+   
     ndarks = len(stack)
     if (ndarks >= nmin):   
         
@@ -114,13 +204,53 @@ def reduce_dark_frames(camid, filelist, dirtree, darktable, nmin=cfg.mindarks):
     
         log.info('Saving masterdark to {}'.format(filename))    
     
-        io.write_masterdark(filename, masterdark, header)
-        #io.update_darktable(filename, darktables[0])
-        log.warn('Running with standard dark, not updating darktable.')
+        io.write_masterframe(filename, masterdark, header)
+        io.update_darktable(filename, darktable)
+        #log.warn('Running with standard dark, not updating darktable.')
     else:
         log.info('Not enough valid darks.')
         
     return
+    
+def reduce_flat_frames(camid, filelist, dirtree, darktable, nmin=cfg.minflat):
+    """ Create a masterflat. """    
+    
+    log.info('Received {} flat frames.'.format(len(filelist)))
+    
+    # Read the files.
+    stack, headers = io.read_stack(filelist)
+    dark, header = io.read_masterdark(darktable)
+
+    if (len(stack) == 0):
+        log.warn('No images were succesfully read.')
+        return
+
+    # Create a recarray containing the required header fields.
+    fields = {'LSTSEQ':'uint32', 'JD':'float64', 'LST':'float64',
+              'EXPTIME':'float32', 'CCDTEMP':'float32',
+              'SITE-OBS':'|S20', 'CAMERA':'|S1',
+              'X0':'uint16', 'XSIZE':'uint16',
+              'Y0':'uint16', 'YSIZE':'uint16'}
+    headers = headers2recarray(headers, fields)
+   
+    nflats = len(stack)
+    if (nflats >= nmin):   
+        
+        log.info('Creating masterflat from {} exposures.'.format(nflats))
+    
+        masterflat, header = combine_flats(stack, headers, dark)    
+    
+        filename = '{:08d}{}masterflat.fits'.format(header['LSTSEQ'], camid)
+        filename = os.path.join(dirtree['binned'], filename)
+    
+        log.info('Saving masterflat to {}'.format(filename))    
+    
+        io.write_masterframe(filename, masterflat, header)
+
+    else:
+        log.info('Not enough valid flats.')
+        
+    return    
     
 ###############################################################################
 ### Functions for reducing science frames.
