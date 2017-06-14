@@ -8,6 +8,7 @@ Created on Thu Nov 17 17:59:53 2016
 import logging
 
 import numpy as np
+from numpy.polynomial import legendre
 
 from astropy import wcs
 
@@ -155,6 +156,46 @@ def poly2d_solve(x1, y1, x2, y2, order=6):
     
     return a, b
     
+def leg2d_mat(x, y, order=6, nx=4008., ny=2672.):
+    """ Create a matrix for fitting 2-D polynomials of the given order. """     
+    
+    mat1 = legendre.legvander(2*(x/nx) - 1, order+1)
+    mat2 = legendre.legvander(2*(y/ny) - 1, order+1)
+        
+    idx1, idx2 = np.indices((order+1, order+1))
+    mask = ((idx1 + idx2) <= order)
+    idx1, idx2 = idx1[mask], idx2[mask]        
+        
+    mat = mat1[:,idx1]*mat2[:,idx2]
+    
+    return mat, idx1, idx2
+
+def leg2d_eval(x, y, a, b, order=6, nx=4008., ny=2672.):
+    """ Evaluate 2-D polynomials. """
+    
+    mat, idx1, idx2 = leg2d_mat(x, y, order, nx, ny)
+    
+    xres = np.dot(mat, a[idx1, idx2])
+    yres = np.dot(mat, b[idx1, idx2])
+    
+    return xres, yres   
+    
+def leg2d_solve(x1, y1, x2, y2, order=6, nx=4008., ny=2672.):
+    """ Solve for the coefficients of 2-D polynomials. """    
+    
+    mat, idx1, idx2 = leg2d_mat(x1, y1, order)  
+    
+    xtmp = np.linalg.lstsq(mat, x2)[0]
+    ytmp = np.linalg.lstsq(mat, y2)[0]    
+    
+    a = np.zeros((order+1, order+1))
+    b = np.zeros((order+1, order+1))  
+
+    a[idx1, idx2] = xtmp
+    b[idx1, idx2] = ytmp    
+    
+    return a, b    
+    
 ###############################################################################
 ### Coordinate transormations.
 ###############################################################################
@@ -210,29 +251,21 @@ def wcs2world(wcspars, xwcs, ywcs, lst=None):
     
     return ra, dec    
 
-def wcs2pix(polpars, xwcs, ywcs, crpix):
+def wcs2pix(polpars, xwcs, ywcs):
     """ Convert WCS-only coordinates to pixel coordinates. """     
-    
-    U, V = (xwcs - crpix[0]), (ywcs - crpix[1])
 
-    dU, dV = poly2d_eval(U/polpars['nx'], V/polpars['ny'], polpars['x_wcs2pix'], polpars['y_wcs2pix'], polpars['order'])    
-    
-    u, v = U + dU, V + dV
-    
-    xpix, ypix = u + crpix[0], v + crpix[1]
+    dx, dy = leg2d_eval(xwcs, ywcs, polpars['x_wcs2pix'], polpars['y_wcs2pix'], polpars['order'], polpars['nx'], polpars['ny'])    
+
+    xpix, ypix = xwcs + dx, ywcs + dy
     
     return xpix, ypix
     
-def pix2wcs(polpars, xpix, ypix, crpix):
+def pix2wcs(polpars, xpix, ypix):
     """ Convert pixel coordinates to WCS-only coordinates. """    
     
-    u, v = xpix - crpix[0], ypix - crpix[1]
+    dx, dy = leg2d_eval(xpix, ypix, polpars['x_pix2wcs'], polpars['y_pix2wcs'], polpars['order'], polpars['nx'], polpars['ny']) 
     
-    du, dv = poly2d_eval(u/polpars['nx'], v/polpars['ny'], polpars['x_pix2wcs'], polpars['y_pix2wcs'], polpars['order']) 
-    
-    U, V = u + du, v + dv
-    
-    xwcs, ywcs = U + crpix[0], V + crpix[1] 
+    xwcs, ywcs = xpix + dx, ypix + dy 
     
     return xwcs, ywcs
 
@@ -322,14 +355,9 @@ def pol_solve(wcspars, polpars, xpix, ypix, ra, dec):
     # Compute wcs-only coordinates.
     xwcs, ywcs = world2wcs(wcspars, ra, dec)
     
-    # Compute intermediate coordinates.
-    crpix = wcspars['crpix']
-    U, V = xwcs - crpix[0], ywcs - crpix[1]
-    u, v = xpix - crpix[0], ypix - crpix[1]
-    
     # Solve for the pix2wcs and wcs2pix transformations.
-    x_pix2wcs, y_pix2wcs = poly2d_solve(u/polpars['nx'], v/polpars['ny'], U - u, V - v, polpars['order'])   
-    x_wcs2pix, y_wcs2pix = poly2d_solve(U/polpars['nx'], V/polpars['ny'], u - U, v - V, polpars['order'])
+    x_pix2wcs, y_pix2wcs = leg2d_solve(xpix, ypix, xwcs - xpix, ywcs - ypix, polpars['order'], polpars['nx'], polpars['ny'])   
+    x_wcs2pix, y_wcs2pix = leg2d_solve(xwcs, ywcs, xpix - xwcs, ypix - ywcs, polpars['order'], polpars['nx'], polpars['ny']) 
     
     polpars['x_pix2wcs'] = x_pix2wcs
     polpars['y_pix2wcs'] = y_pix2wcs
@@ -337,7 +365,7 @@ def pol_solve(wcspars, polpars, xpix, ypix, ra, dec):
     polpars['y_wcs2pix'] = y_wcs2pix    
     
     # Compute quality of the solution.
-    xpix1, ypix1 = wcs2pix(polpars, xwcs, ywcs, crpix)    
+    xpix1, ypix1 = wcs2pix(polpars, xwcs, ywcs)    
     
     dx = np.std(xpix - xpix1)
     dy = np.std(ypix - ypix1)
@@ -392,14 +420,14 @@ class Astrometry(object):
         xwcs, ywcs = xwcs[mask], ywcs[mask]        
         
         # Convert to actual pixel coordinates.
-        xpix, ypix = wcs2pix(self.polpars, xwcs, ywcs, self.wcspars['crpix'])
+        xpix, ypix = wcs2pix(self.polpars, xwcs, ywcs)
         
         return xpix, ypix, mask
     
     def pix2world(self, lst, xpix, ypix):
         
         # Convert to wcs-only pixel coordinates.
-        xwcs, ywcs = pix2wcs(self.polpars, xpix, ypix, self.wcspars['crpix'])
+        xwcs, ywcs = pix2wcs(self.polpars, xpix, ypix)
         
         # Convert to world coordinates.
         ra, dec = wcs2world(self.wcspars, xwcs, ywcs, lst)
