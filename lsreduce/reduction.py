@@ -172,7 +172,7 @@ def reduce_bias_frames(camid, filelist, dirtree, nmin=cfg.minbias):
         
     return    
     
-def reduce_dark_frames(camid, filelist, dirtree, darktable, nmin=cfg.mindarks):
+def reduce_dark_frames(camid, filelist, dirtree, darktable, nmin=cfg.mindark):
     """ Create a masterdark. """    
     
     log.info('Received {} dark frames.'.format(len(filelist)))
