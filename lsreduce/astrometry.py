@@ -203,14 +203,14 @@ def leg2d_solve(x1, y1, x2, y2, order=6, nx=4008., ny=2672.):
 def ra2ha(ra, lst):
     """ Convert Right Ascension to Hour Angle. """
     
-    ha = np.mod(ra - lst*15., 360.)
+    ha = np.mod(lst*15. - ra, 360.)
 
     return ha
 
 def ha2ra(ha, lst):
     """ Convert Hour Angle to Right Ascension. """    
     
-    ra = np.mod(ha + lst*15., 360.)
+    ra = np.mod(lst*15. - ha, 360.)
 
     return ra
 
