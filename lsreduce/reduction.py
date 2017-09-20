@@ -7,6 +7,7 @@ Created on Mon Nov  7 14:10:15 2016
 
 import os
 import logging
+import datetime 
 
 import numpy as np
 
@@ -256,9 +257,11 @@ def reduce_flat_frames(camid, filelist, dirtree, darktable, nmin=cfg.minflat):
 ### Functions for reducing science frames.
 ###############################################################################    
    
-def preprocess(stack, headers, darktable):
+def utcobs2datetime(utcobs):
     
-    import datetime    
+    return datetime.datetime.strptime(utcobs, '%Y-%m-%d %H:%M:%S.%f')   
+   
+def preprocess(stack, headers, darktable):
     
     nimages = len(stack)
     
@@ -281,7 +284,7 @@ def preprocess(stack, headers, darktable):
     
     for i in range(nimages):
         
-        tmp = datetime.datetime.strptime(headers[i]['UTC-OBS'], '%Y-%m-%d %H:%M:%S.%f')
+        tmp = utcobs2datetime(headers[i]['UTC-OBS'])
     
         station[i]['year'] = tmp.year
         station[i]['month'] = tmp.month
@@ -389,11 +392,11 @@ def lightcurves(stack, station, astro, cat, aper, skyrad, maglim):
     ra, dec = cat['ra'][select], cat['dec'][select]    
     
     # Create a recarray to hold the results.
-    names = ['ascc', 'lstseq', 'sky', 'esky', 'peak', 'x', 'y', 'pflag', 'aflag']
+    names = ['ascc', 'lstseq', 'sky', 'esky', 'peak', 'x', 'y', 'pflag', 'aflag', 'tmpmag0', 'tmpemag0', 'cflag']
     names = names + ['flux{}'.format(i) for i in range(naper)]
     names = names + ['eflux{}'.format(i) for i in range(naper)]    
     
-    formats = ['|S32', 'uint32', 'float64', 'float32', 'float32', 'float32', 'float32', 'uint8', 'uint8']
+    formats = ['|S32', 'uint32', 'float64', 'float32', 'float32', 'float32', 'float32', 'uint8', 'uint8', 'float32', 'float32', 'uint8']
     formats = formats + naper*['float64'] + naper*['float32']    
     
     curves = np.recarray((0,), names=names, formats=formats)    
@@ -426,6 +429,8 @@ def lightcurves(stack, station, astro, cat, aper, skyrad, maglim):
             curves_['eflux{}'.format(i)] = eflux[:,i]
             
         curves = np.append(curves, curves_)
+
+    curves['cflag'] = 1
 
     # Sort the array be ascc first and lstseq second.        
     sort = np.lexsort((curves['lstseq'], curves['ascc']))
@@ -520,10 +525,7 @@ def live_calibration(station, curves, cat, systable):
     cflag = np.where(sigma[lstidx,skyidx] > .05, cflag+16, cflag) 
     cflag = np.where(np.isnan(sys), cflag+1, cflag)    
     
-    # Add the temporary calibration to the lightcurves.
-    fields = {'tmpmag0':'float32', 'tmpemag0':'float32', 'cflag':'uint8'}
-    curves = expand_recarray(curves, fields)     
-    
+    # Add the temporary calibration to the lightcurves.    
     curves['tmpmag0'] = mag - sys
     curves['tmpemag0'] = emag
     curves['cflag'] = cflag    
@@ -591,11 +593,7 @@ def reduce_science_frames(camid, filelist, siteinfo, dirtree, darktable, astroma
     log.info('Received {} science frames.'.format(len(filelist)))  
     
     # Read the catalogue.
-    cat = io.read_catalogue()     
-    
-    # Initialize the astrometry.
-    wcspars, polpars = io.read_astromaster(astromaster)
-    astro = astrometry.Astrometry(wcspars, polpars)         
+    cat = io.read_catalogue()            
     
     # Read the files.
     stack, headers = io.read_stack(filelist)
@@ -607,11 +605,51 @@ def reduce_science_frames(camid, filelist, siteinfo, dirtree, darktable, astroma
     # Preprocess the files.
     stack, station = preprocess(stack, headers, darktable) 
 
+    # Determine which master solution to use.
+    utcastro = utcobs2datetime(headers[0]['UTC-OBS'])
+    midnight = astrometry.closest_sunmin(siteinfo, t=utcastro)
+    delta = midnight - utcastro   
+
+    update_astro = False
+    if delta > datetime.timedelta(hours=2):
+        astro_idx = 0
+        
+        if datetime.timedelta(hours=3) < delta < datetime.timedelta(hours=4):
+            update_astro = True
+        
+    elif -delta > datetime.timedelta(hours=2):
+        astro_idx = 2       
+        
+        if datetime.timedelta(hours=3) < -delta < datetime.timedelta(hours=4):
+            update_astro = True
+        
+    else:
+        astro_idx = 1
+    
+        if abs(delta) < datetime.timedelta(minutes=30):
+            update_astro = True
+
+    # Initialize the astrometry.
+    wcspars, polpars = io.read_astromaster(astromaster[astro_idx])
+    astro = astrometry.Astrometry(wcspars, polpars)  
+
     # Perform astrometry.
     select = (cat['vmag'] <= cfg.maglim_astro) & (cat['vmag'] > 4.)           
     ra, dec = cat['ra'][select], cat['dec'][select]   
          
     aflag, astrosol = astro.solve(stack[0], station[0], ra, dec) 
+    
+    # Update the master solution.
+    if update_astro & (aflag < 1):
+        
+        if (astrosol['dr'] < 1.5) & (astrosol['ustars'] >= .99*astrosol['fstars']):
+            
+            log.info('Replacing current astrometric master solution.')
+            
+            wcspars = astro.get_wcspars()
+            polpars = astro.get_polpars()
+            
+            io.write_astromaster(astromaster[astro_idx], wcspars, polpars)    
     
     # Add sun and moon information.
     station = sunmoon2station(station, siteinfo, astro)    

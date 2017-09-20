@@ -32,11 +32,21 @@ darktable = {'LSN': os.path.join(confdir, 'darktableLSN.dat'),
              'LSC': os.path.join(confdir, 'darktableLSC.dat')}
               
 # Locations of the astrometry master solutions.
-astromaster = {'LSN': os.path.join(confdir, 'astromasterLSN.hdf5'),
-               'LSE': os.path.join(confdir, 'astromasterLSE.hdf5'),
-               'LSS': os.path.join(confdir, 'astromasterLSS.hdf5'),
-               'LSW': os.path.join(confdir, 'astromasterLSW.hdf5'),
-               'LSC': os.path.join(confdir, 'astromasterLSC.hdf5')}
+astromaster = {'LSN': [os.path.join(confdir, 'astromasterLSNdusk.hdf5'),
+                       os.path.join(confdir, 'astromasterLSNnight.hdf5'),
+                       os.path.join(confdir, 'astromasterLSNdawn.hdf5')],
+               'LSE': [os.path.join(confdir, 'astromasterLSEdusk.hdf5'),
+                       os.path.join(confdir, 'astromasterLSEnight.hdf5'),
+                       os.path.join(confdir, 'astromasterLSEdawn.hdf5')],
+               'LSS': [os.path.join(confdir, 'astromasterLSSdusk.hdf5'),
+                       os.path.join(confdir, 'astromasterLSSnight.hdf5'),
+                       os.path.join(confdir, 'astromasterLSSdawn.hdf5')],
+               'LSW': [os.path.join(confdir, 'astromasterLSWdusk.hdf5'),
+                       os.path.join(confdir, 'astromasterLSWnight.hdf5'),
+                       os.path.join(confdir, 'astromasterLSWdawn.hdf5')],
+               'LSC': [os.path.join(confdir, 'astromasterLSCdusk.hdf5'),
+                       os.path.join(confdir, 'astromasterLSCnight.hdf5'),
+                       os.path.join(confdir, 'astromasterLSCdawn.hdf5')]}
 
 # Locations of the systables.
 systable = {'LSN': os.path.join(confdir, 'systableLSN.dat'),

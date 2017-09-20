@@ -77,6 +77,14 @@ def _archiver(queue, nworkers=5):
         pool.join()
 
 
+def ensure_dir(path):
+    
+    if not os.path.exists(path):
+        os.makedirs(path)
+        
+    return
+    
+
 def read_siteinfo(filename, sitename):
 
     # Read the siteinfo file.
@@ -194,9 +202,14 @@ def read_astromaster(filename):
         
     return wcspars, polpars
     
-def write_astromaster(filename, wcspars, polpars):
+def write_astromaster(filename, wcspars, polpars, overwrite=True):
 
-    with h5py.File(filename) as f:
+    if overwrite:
+        mode = 'w'
+    else:
+        mode = 'a'
+
+    with h5py.File(filename, mode=mode) as f:
         
         grp = f.create_group('wcspars')
         grp.attrs['lst'] = wcspars['lst']
@@ -542,7 +555,7 @@ def _read_curves(filelist, ascc, nobs, dtype):
     nfiles = len(filelist)
     nstars = len(ascc)
     
-    strides = np.row_stack([nstars*[0], np.cumsum(nobs, axis=0)])    
+    strides = np.row_stack([nstars*[0], np.cumsum(nobs, axis=0)]).astype('int')     
     curves = {ascc[i]:np.recarray(strides[-1,i], dtype=dtype) for i in range(nstars)}
     
     for i in range(nfiles):
@@ -758,10 +771,12 @@ class PhotFile(object):
         with h5py.File(self.filename, 'r') as f:
             
             grp = f['lightcurves']
-            
+            if not hasattr(self, 'ascc0'):
+                self.ascc0 = set(grp.keys()) 
+                
             for i in range(nstars):
                 
-                if ascc[i] in grp.keys():
+                if ascc[i] in self.ascc0:
                     curves[ascc[i]] = grp[ascc[i]].value
                     nobs[i] = len(curves[ascc[i]])
                 else:
