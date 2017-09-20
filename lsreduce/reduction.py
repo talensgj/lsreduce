@@ -568,7 +568,7 @@ def postage_stamps(curves, stack, station, nhalf=cfg.nhalf):
     
     npoints = len(curves)  
     
-    idx = curves['lstseq'] - station['lstseq'][0] 
+    idx = np.searchsorted(station['lstseq'], curves['lstseq'])
     stamps = np.zeros((npoints, 2*nhalf+1, 2*nhalf+1), dtype='float32')    
     
     for i in range(npoints):      
