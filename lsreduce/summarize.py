@@ -379,29 +379,23 @@ def calibration_summary(directory, astromaster):
     # Get the systematics file to summarize.
     sysfile = os.path.join(directory, 'sys0_vmag_'+tail+'.hdf5')
 
-    head, tail = os.path.split(sysfile)
-    tail = tail.rsplit('.')[0].rsplit('_')[-1]
-
     # Create diagnostic figures.
-    figname = os.path.join(head, tail+'trans.png')
     try:
-        fig_transmission(sysfile, astromaster, figname)
+        figname = fig_transmission(sysfile, astromaster)
     except:
         pass
     else:
         images.append(figname)
     
-    figname = os.path.join(head, tail+'ipx.png')
     try:
-        fig_intrapix(sysfile, astromaster, figname)
+        figname = fig_intrapix(sysfile, astromaster)
     except:
         pass
     else:
         images.append(figname)
     
-    figname = os.path.join(head, tail+'clouds.png')
     try:
-        fig_clouds(sysfile, figname)
+        figname = fig_clouds(sysfile, figname)
     except:
         pass
     else:
@@ -471,7 +465,12 @@ def plot_polar(grid, data, wcspars, **kwargs):
 
     return im
     
-def fig_transmission(filename, astromaster, figname):
+def fig_transmission(filename, astromaster, figname=None):
+    
+    if figname is None:
+        head, tail = os.path.split(filename)
+        tail = tail.rsplit('.')[0].rsplit('_')[-1]    
+        figname = os.path.join(head, tail+'trans.png')      
     
     # Read the transmission map.
     f = io.SysFile(filename)
@@ -507,7 +506,12 @@ def fig_transmission(filename, astromaster, figname):
     
     return
     
-def fig_intrapix(filename, astromaster, figname):
+def fig_intrapix(filename, astromaster, figname=None):
+    
+    if figname is None:
+        head, tail = os.path.split(filename)
+        tail = tail.rsplit('.')[0].rsplit('_')[-1]    
+        figname = os.path.join(head, tail+'ipx.png')    
     
     # Read the intrapixel amplitudes.
     f = io.SysFile(filename) 
@@ -565,7 +569,12 @@ def fig_intrapix(filename, astromaster, figname):
     
     return
     
-def fig_clouds(filename, figname):
+def fig_clouds(filename, figname=None):
+    
+    if figname is None:
+        head, tail = os.path.split(filename)
+        tail = tail.rsplit('.')[0].rsplit('_')[-1]    
+        figname = os.path.join(head, tail+'clouds.png')   
     
     # Read the intrapixel amplitudes.
     f = io.SysFile(filename)     
