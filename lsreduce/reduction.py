@@ -259,7 +259,7 @@ def reduce_flat_frames(camid, filelist, dirtree, darktable, nmin=cfg.minflat):
    
 def utcobs2datetime(utcobs):
     
-    return datetime.datetime.strptime(utcobs, '%Y-%m-%d %H:%M:%S.%f')   
+    return datetime.datetime.strptime(utcobs, '%Y-%m-%dT%H:%M:%S.%f')   
    
 def preprocess(stack, headers, darktable):
     
@@ -362,7 +362,7 @@ def sunmoon2station(station, siteinfo, astro):
 
     for i in range(nimages):
         
-        x, y, mask = astro.world2pix(station[i]['lst'], ra[i], dec[i])
+        x, y, mask = astro.world2pix(station[i]['lst'], ra[i], dec[i], jd=station[i]['jd'])
        
         if mask:
             station[i]['moonx'] = np.around(x)
@@ -404,11 +404,12 @@ def lightcurves(stack, station, astro, cat, aper, skyrad, maglim):
     for i in range(nimages):    
 
         image = stack[i]
+        jd = station[i]['jd']
         lst = station[i]['lst']
         lstseq = station[i]['lstseq']
             
         # Compute positions and photometry.    
-        x, y, mask = astro.world2pix(lst, ra, dec)  
+        x, y, mask = astro.world2pix(lst, ra, dec, jd=jd)  
         flux, eflux, sky, esky, peak, pflag = phot.get_phot(image, x, y)
     
         nstars = len(x)    

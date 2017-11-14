@@ -214,6 +214,32 @@ def ha2ra(ha, lst):
 
     return ra
 
+def j2000_to_equinox(ra, dec, jd):
+    
+    from astropy.time import Time
+    from astropy.coordinates import SkyCoord, FK5
+    
+    t = Time(jd, scale='utc', format='jd') 
+    t.format = 'jyear_str'
+    
+    gc = SkyCoord(ra, dec, frame='fk5', unit='deg', equinox='J2000')    
+    gc = gc.transform_to(FK5(equinox=t))    
+    
+    return gc.ra.value, gc.dec.value
+    
+def equinox_to_j2000(ra, dec, jd):
+    
+    from astropy.time import Time
+    from astropy.coordinates import SkyCoord, FK5    
+    
+    t = Time(jd, scale='utc', format='jd')
+    t.format = 'jyear_str'
+    
+    gc = SkyCoord(ra, dec, frame='fk5', unit='deg', equinox=t)    
+    gc = gc.transform_to(FK5(equinox='J2000')) 
+    
+    return gc.ra.value, gc.dec.value
+
 def create_wcs(wcspars, lst=None):
     """ Create and astropy WCS instance from a dictionary of parameters. """    
     
@@ -235,19 +261,25 @@ def create_wcs(wcspars, lst=None):
     
     return w
     
-def world2wcs(wcspars, ra, dec, lst=None):
+def world2wcs(wcspars, ra, dec, lst=None, jd=None):
     """ Convert world coordinates to WCS-only coordinates. """    
         
+    if jd is not None:
+        ra, dec = j2000_to_equinox(ra, dec, jd)
+    
     w = create_wcs(wcspars, lst)
     xwcs, ywcs = w.wcs_world2pix(ra, dec, 0)
     
     return xwcs, ywcs
     
-def wcs2world(wcspars, xwcs, ywcs, lst=None):
+def wcs2world(wcspars, xwcs, ywcs, lst=None, jd=None):
     """ Convert WCS-only coordinates to world coordinates. """    
     
     w = create_wcs(wcspars, lst)
     ra, dec = w.wcs_pix2world(xwcs, ywcs, 0)
+    
+    if jd is not None:
+        ra, dec = equinox_to_j2000(ra, dec, jd)
     
     return ra, dec    
 
@@ -332,7 +364,7 @@ def wcs_solve(wcspars, lst, xpix, ypix, ra, dec):
     ha0 = ra2ha(ra0, wcspars['lst'])
     ra0 = ha2ra(ha0, lst)
     crval = np.array([ra0, dec0])
-        
+     
     # Find the best fit values for crval.
     res = minimize(wcs_chisq, crval, args=(cdelt, xpix, ypix, ra, dec), bounds=[(None, None), (-90, 90)])
     
@@ -410,10 +442,10 @@ class Astrometry(object):
         
         return
         
-    def world2pix(self, lst, ra, dec, nx=4008, ny=2672, margin=50):
+    def world2pix(self, lst, ra, dec, jd=None, nx=4008, ny=2672, margin=50):
         
         # Compute wcs-only pixel coordinates.
-        xwcs, ywcs = world2wcs(self.wcspars, ra, dec, lst)        
+        xwcs, ywcs = world2wcs(self.wcspars, ra, dec, lst, jd)        
         
         # Remove coordinates not within the margins.
         mask = np.isfinite(xwcs) & misc.clip_rectangle(xwcs, ywcs, nx, ny, margin)
@@ -424,13 +456,13 @@ class Astrometry(object):
         
         return xpix, ypix, mask
     
-    def pix2world(self, lst, xpix, ypix):
+    def pix2world(self, lst, xpix, ypix, jd=None):
         
         # Convert to wcs-only pixel coordinates.
         xwcs, ywcs = pix2wcs(self.polpars, xpix, ypix)
         
         # Convert to world coordinates.
-        ra, dec = wcs2world(self.wcspars, xwcs, ywcs, lst)
+        ra, dec = wcs2world(self.wcspars, xwcs, ywcs, lst, jd)
         
         return ra, dec
         
@@ -443,6 +475,7 @@ class Astrometry(object):
             2 : The image is too bright no new solution was made.
             4 : Detection rate fell below the threshold, no solution was made.
         """
+        
         log = logging.getLogger('lsreduce').getChild('astrometry')
         aflag = 0        
         
@@ -459,6 +492,9 @@ class Astrometry(object):
             aflag += 2
             
             return aflag, dict()
+        
+        # Set the equinox.
+        ra, dec = j2000_to_equinox(ra, dec, header['jd'])        
         
         # Evaluate the solution.
         xpix, ypix, mask = self.world2pix(header['lst'], ra, dec)
