@@ -198,11 +198,16 @@ def read_astromaster(filename):
         polpars['x_wcs2pix'] = grp['x_wcs2pix'].value
         polpars['y_wcs2pix'] = grp['y_wcs2pix'].value
         polpars['x_pix2wcs'] = grp['x_pix2wcs'].value
-        polpars['y_pix2wcs'] = grp['y_pix2wcs'].value        
+        polpars['y_pix2wcs'] = grp['y_pix2wcs'].value   
         
-    return wcspars, polpars
+        if 'astromask' in f.keys():
+            astromask = f['astromask'].value
+        else:
+            astromask = None
+        
+    return wcspars, polpars, astromask
     
-def write_astromaster(filename, wcspars, polpars, overwrite=True):
+def write_astromaster(filename, wcspars, polpars, astromask=None, overwrite=True):
 
     if overwrite:
         mode = 'w'
@@ -226,6 +231,9 @@ def write_astromaster(filename, wcspars, polpars, overwrite=True):
         grp.create_dataset('y_wcs2pix', data=polpars['y_wcs2pix'])
         grp.create_dataset('x_pix2wcs', data=polpars['x_pix2wcs'])
         grp.create_dataset('y_pix2wcs', data=polpars['y_pix2wcs'])  
+        
+        if astromask is not None:
+            f.create_dataset('astromask', data=astromask)
         
     return      
     

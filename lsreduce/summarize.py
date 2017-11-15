@@ -224,40 +224,40 @@ def fig_astrometry(fastphot, figname):
     plt.subplot(gs[2,0], aspect='equal')
     plt.annotate('(1002, 668)', (0, 1), xytext=(10, -10), xycoords='axes fraction', textcoords='offset points', va='top', ha='left', size='x-large')
     plt.plot(ha0*60, dec0*60, 'k.')
-    plt.xlim(-10, 10)
-    plt.ylim(-10, 10)
+    plt.xlim(-2, 2)
+    plt.ylim(-2, 2)
     plt.xlabel("$\Delta$HA [']")
     plt.ylabel("$\Delta$Dec [']")
     
     plt.subplot(gs[2,1], aspect='equal')
     plt.annotate('(1002, 2004)', (0, 1), xytext=(10, -10), xycoords='axes fraction', textcoords='offset points', va='top', ha='left', size='x-large')
     plt.plot(ha1*60, dec1*60, 'k.')
-    plt.xlim(-10, 10)
-    plt.ylim(-10, 10)
+    plt.xlim(-2, 2)
+    plt.ylim(-2, 2)
     plt.xlabel("$\Delta$HA [']")
     plt.ylabel("$\Delta$Dec [']")
     
     plt.subplot(gs[2,2], aspect='equal')
     plt.annotate('(2004, 1336)', (0, 1), xytext=(10, -10), xycoords='axes fraction', textcoords='offset points', va='top', ha='left', size='x-large')
     plt.plot(ha2*60, dec2*60, 'k.')
-    plt.xlim(-10, 10)
-    plt.ylim(-10, 10)
+    plt.xlim(-2, 2)
+    plt.ylim(-2, 2)
     plt.xlabel("$\Delta$HA [']")
     plt.ylabel("$\Delta$Dec [']")
     
     plt.subplot(gs[1,2], aspect='equal')
     plt.annotate('(3006, 668)', (0, 1), xytext=(10, -10), xycoords='axes fraction', textcoords='offset points', va='top', ha='left', size='x-large')
     plt.plot(ha3*60, dec3*60, 'k.')
-    plt.xlim(-10, 10)
-    plt.ylim(-10, 10)
+    plt.xlim(-2, 2)
+    plt.ylim(-2, 2)
     plt.xlabel("$\Delta$HA [']")
     plt.ylabel("$\Delta$Dec [']")
     
     plt.subplot(gs[0,2], aspect='equal')
     plt.annotate('(3006, 2004)', (0, 1), xytext=(10, -10), xycoords='axes fraction', textcoords='offset points', va='top', ha='left', size='x-large')
     plt.plot(ha4*60, dec4*60, 'k.')
-    plt.xlim(-10, 10)
-    plt.ylim(-10, 10)
+    plt.xlim(-2, 2)
+    plt.ylim(-2, 2)
     plt.xlabel("$\Delta$HA [']")
     plt.ylabel("$\Delta$Dec [']")
     
@@ -504,7 +504,7 @@ def fig_transmission(filename, astromaster, figname=None):
     plt.savefig(figname, dpi=100)
     plt.close()
     
-    return
+    return figname
     
 def fig_intrapix(filename, astromaster, figname=None):
     
@@ -517,7 +517,7 @@ def fig_intrapix(filename, astromaster, figname=None):
     f = io.SysFile(filename) 
     pg, nobs, amplitudes = f.read_intrapix()     
     
-    wcspars, polpars = io.read_astromaster(astromaster)        
+    wcspars, polpars, astromask = io.read_astromaster(astromaster)        
     
     # Plot the amplitudes.
     fig = plt.figure(figsize=(16, 10))
@@ -567,7 +567,7 @@ def fig_intrapix(filename, astromaster, figname=None):
     plt.savefig(figname, dpi=100)
     plt.close()  
     
-    return
+    return figname
     
 def fig_clouds(filename, figname=None):
     
@@ -612,7 +612,7 @@ def fig_clouds(filename, figname=None):
     plt.savefig(figname, dpi=100)
     plt.close()
     
-    return
+    return figname
     
 def main():
 

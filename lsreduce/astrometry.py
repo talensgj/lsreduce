@@ -434,12 +434,23 @@ def pol_solve(wcspars, polpars, xpix, ypix, ra, dec):
 ### Class for using the astrometry starting from a master solution.
 ###############################################################################
    
+def clip_astromask(x, y, astromask):
+
+    mask = np.zeros(len(x), dtype='bool')
+    for i in range(len(astromask)):
+        lx, ux, ly, uy = astromask[i]
+        submask = (x > lx) & (x < ux) & (y > ly) & (y < uy)
+        mask = mask | submask
+
+    return ~mask   
+   
 class Astrometry(object):
     
-    def __init__(self, wcspars, polpars):
+    def __init__(self, wcspars, polpars, astromask=None):
         
         self.wcspars = wcspars
-        self.polpars = polpars      
+        self.polpars = polpars 
+        self.astromask = astromask
         
         self._backup_solution()        
         
@@ -452,6 +463,10 @@ class Astrometry(object):
     def get_polpars(self):
         
         return self.polpars
+        
+    def get_astromask(self):
+        
+        return self.astromask
         
     def _backup_solution(self):
         
@@ -473,7 +488,9 @@ class Astrometry(object):
         xwcs, ywcs = world2wcs(self.wcspars, ra, dec, lst, jd)        
         
         # Remove coordinates not within the margins.
-        mask = np.isfinite(xwcs) & misc.clip_rectangle(xwcs, ywcs, nx, ny, margin)
+        mask = np.isfinite(xwcs) & misc.clip_rectangle(xwcs, ywcs, nx, ny, margin) 
+        if self.astromask is not None:        
+            mask = mask & clip_astromask(xwcs, ywcs, self.astromask)
         xwcs, ywcs = xwcs[mask], ywcs[mask]        
         
         # Convert to actual pixel coordinates.

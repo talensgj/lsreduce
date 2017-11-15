@@ -638,8 +638,8 @@ def reduce_science_frames(camid, filelist, siteinfo, dirtree, darktable, astroma
             update_astro = True
 
     # Initialize the astrometry.
-    wcspars, polpars = io.read_astromaster(astromaster[astro_idx])
-    astro = astrometry.Astrometry(wcspars, polpars)  
+    wcspars, polpars, astromask = io.read_astromaster(astromaster[astro_idx])
+    astro = astrometry.Astrometry(wcspars, polpars, astromask)  
 
     # Perform astrometry.
     select = (cat['vmag'] <= cfg.maglim_astro) & (cat['vmag'] > 4.)           
@@ -656,8 +656,9 @@ def reduce_science_frames(camid, filelist, siteinfo, dirtree, darktable, astroma
             
             wcspars = astro.get_wcspars()
             polpars = astro.get_polpars()
+            astromask = astro.get_astromask()
             
-            io.write_astromaster(astromaster[astro_idx], wcspars, polpars)    
+            io.write_astromaster(astromaster[astro_idx], wcspars, polpars, astromask)    
     
     # Add sun and moon information.
     station = sunmoon2station(station, siteinfo, astro)    
