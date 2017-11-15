@@ -416,13 +416,14 @@ def wcsgrid(wcspars):
     # Add lines of constant declination.
     ha = np.linspace(0, 360, 360)
     dec = np.linspace(-80, 80, 17)
-    ha, dec = np.meshgrid(ha, dec)
+    ha, dec = np.meshgrid(ha, dec)    
     
     tmp = ha.shape
     
     ha, dec = ha.ravel(), dec.ravel()
+    ra = astrometry.ha2ra(ha, 0.)
     
-    x, y = astrometry.world2wcs(wcspars, ha, dec, 0.)
+    x, y = astrometry.world2wcs(wcspars, ra, dec, 0.)
     x, y = x.reshape(tmp), y.reshape(tmp)
     
     here = (x > -50) & (x < 4008+50) & (y > -50) & (y < 2672+50)
@@ -439,8 +440,9 @@ def wcsgrid(wcspars):
     tmp = ha.shape
     
     ha, dec = ha.ravel(), dec.ravel()
+    ra = astrometry.ha2ra(ha, 0.)
     
-    x, y = astrometry.world2wcs(wcspars, ha, dec, 0.)
+    x, y = astrometry.world2wcs(wcspars, ra, dec, 0.)
     x, y = x.reshape(tmp), y.reshape(tmp)
     
     here = (x > -50) & (x < 4008+50) & (y > -50) & (y < 2672+50)
@@ -458,7 +460,9 @@ def plot_polar(grid, data, wcspars, **kwargs):
     
     ha, dec = grid.xedges, grid.yedges
     ha, dec = np.meshgrid(ha, dec)
-    x, y = astrometry.world2wcs(wcspars, ha, dec, 0)
+    ra = astrometry.ha2ra(ha, 0.)    
+    
+    x, y = astrometry.world2wcs(wcspars, ra, dec, 0.)
     
     im = plt.pcolormesh(x, y, data.T, **kwargs)
     wcsgrid(wcspars)
