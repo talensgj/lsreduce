@@ -39,15 +39,8 @@ def headers2recarray(headers, fields):
         header = headers[i]
         
         for key in fields.keys():
-            if key.lower() == 'lstseq':
-                try:
-                    array[i][key] = header['lpstseq']
-                except:
-                    array[i][key] = header[key]
-                continue
             array[i][key] = header[key]
             
-    
     return array
    
 def expand_recarray(array, fields):
