@@ -348,7 +348,7 @@ def rawdir_monitor(camid, nocal=False, twilight=5, nscience=49, nbias=20, ndark=
         
             # Parse files.
             log.info('Parsing files.')
-            science_frames, bias_frames, dark_frames, flat_frames, remainder = parse_files(new_files, nscience, nbias, ndark, nflat)        
+            science_frames, bias_frames, dark_frames, flat_frames, remainder = parse_files(new_files, nbias, ndark, nflat)        
             log.debug('{}, {}, {}, {}'.format(bias_time, dark_time, flat_time, science_time))
             
             if (len(bias_frames) == nbias) | (bias_time >= (nbias + timeout)):
@@ -436,7 +436,7 @@ def rawdir_monitor(camid, nocal=False, twilight=5, nscience=49, nbias=20, ndark=
             while (len(new_files) > 0):            
             
                 # Parse files.
-                science_frames, bias_frames, dark_frames, flat_frames, remainder = parse_files(new_files, nscience, nbias, ndark, nflat)
+                science_frames, bias_frames, dark_frames, flat_frames, remainder = parse_files(new_files, nbias, ndark, nflat)
             
                 if (len(bias_frames) > 0):
                     
