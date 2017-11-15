@@ -438,6 +438,8 @@ def lightcurves(stack, station, astro, cat, aper, skyrad, maglim):
             
         curves = np.append(curves, curves_)
 
+    curves['tmpmag0'] = 0.
+    curves['tmpemag0'] = 0.
     curves['cflag'] = 1
 
     # Sort the array be ascc first and lstseq second.        
