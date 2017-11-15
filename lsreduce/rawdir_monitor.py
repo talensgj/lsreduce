@@ -154,7 +154,7 @@ def build_dirtree(date, camid):
             
     return dirtree
 
-def parse_files(filelist, nscience, nbias, ndark, nflat):
+def parse_files(filelist, nbias, ndark, nflat):
     
     filelist = np.sort(filelist)
 
@@ -175,7 +175,7 @@ def parse_files(filelist, nscience, nbias, ndark, nflat):
         lstseq = np.array([int(os.path.split(filename)[-1][:8]) for filename in science_frames])
         
         # Select the oldest set of 50 science frames present in the directory.
-        setidx = lstseq//nscience
+        setidx = lstseq//50
         nim = sum(setidx == np.amin(setidx))
         
     else:
@@ -261,7 +261,7 @@ def parse_files(filelist, nscience, nbias, ndark, nflat):
 #
 #    return
 
-def rawdir_monitor(camid, twilight=5, nscience=50, nbias=20, ndark=20, nflat=20, timeout=10, step=6.4):    
+def rawdir_monitor(camid, twilight=5, nscience=49, nbias=20, ndark=20, nflat=20, timeout=10, step=6.4):    
 
     log = logging.getLogger('lsreduce')
     log.info('Initializing main reduction loop for camera {}.'.format(camid))    
