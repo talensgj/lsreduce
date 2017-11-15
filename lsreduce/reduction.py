@@ -39,7 +39,14 @@ def headers2recarray(headers, fields):
         header = headers[i]
         
         for key in fields.keys():
+            if key.lower() == 'lstseq':
+                try:
+                    array[i][key] = header['lpstseq']
+                except:
+                    array[i][key] = header[key]
+                continue
             array[i][key] = header[key]
+            
     
     return array
    
@@ -259,7 +266,7 @@ def reduce_flat_frames(camid, filelist, dirtree, darktable, nmin=cfg.minflat):
    
 def utcobs2datetime(utcobs):
     
-    return datetime.datetime.strptime(utcobs, '%Y-%m-%dT%H:%M:%S.%f')   
+    return datetime.datetime.strptime(utcobs, '%Y-%m-%d %H:%M:%S.%f')   
    
 def preprocess(stack, headers, darktable):
     
@@ -660,16 +667,16 @@ def reduce_science_frames(camid, filelist, siteinfo, dirtree, darktable, astroma
     fast_curves = lightcurves(stack, station, astro, cat, cfg.aper_fast, cfg.skyrad, cfg.maglim_fast)
     fast_curves['aflag'] = aflag
 
-    # Perform the live calibration.
-    fast_curves, nobs, clouds, sigma, lstmin, lstmax, lstlen = live_calibration(station, fast_curves, cat, systable)
-
-    # Save the live calibration.
-    filename = 'tmp_clouds{:08d}.hdf5'.format(station[0]['lstseq'])
-    filename = os.path.join(dirtree['sys'], filename)
-    
-    log.info('Saving the live calibration to {}'.format(filename))
-    
-    io.tmp_clouds(filename, nobs, clouds, sigma, lstmin, lstmax, lstlen)
+#    # Perform the live calibration.
+#    fast_curves, nobs, clouds, sigma, lstmin, lstmax, lstlen = live_calibration(station, fast_curves, cat, systable)
+#
+#    # Save the live calibration.
+#    filename = 'tmp_clouds{:08d}.hdf5'.format(station[0]['lstseq'])
+#    filename = os.path.join(dirtree['sys'], filename)
+#    
+#    log.info('Saving the live calibration to {}'.format(filename))
+#    
+#    io.tmp_clouds(filename, nobs, clouds, sigma, lstmin, lstmax, lstlen)
 
     # Save the fast lightcurves.
     filename = 'tmp_fast{:08d}.hdf5'.format(station[0]['lstseq'])        

@@ -111,6 +111,31 @@ def next_sunrise(siteinfo, t=None):
     sunrise = site.next_rising(ephem.Sun(), use_center=True).datetime()
     
     return sunrise    
+	
+def closest_sunmin(siteinfo, t=None):
+    
+    """ Compute time of next sunrise. """ 
+    
+    import datetime
+    import ephem    
+    
+    if t is None:    
+        t = datetime.datetime.utcnow()
+    
+    site = ephem.Observer()
+    site.lat = siteinfo['lat']*np.pi/180.
+    site.lon = siteinfo['lon']*np.pi/180.
+    site.elevation = siteinfo['height']
+    site.horizon = '-10'   
+    site.date = t 
+    
+    sunmin1 = site.next_antitransit(ephem.Sun()).datetime()
+    sunmin2 = site.previous_antitransit(ephem.Sun()).datetime()
+    
+    if abs(t - sunmin1) < abs(t - sunmin2):
+        return sunmin1
+    else:
+        return sunmin2
     
 ###############################################################################
 ### 2-D Polynomial helper functions.

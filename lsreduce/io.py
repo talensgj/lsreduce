@@ -324,7 +324,7 @@ class TmpFile(object):
             grp.attrs['lon'] = siteinfo['lon']
             grp.attrs['alt'] = siteinfo['height']
             grp.attrs['aversion'] = header['APIVER']
-            grp.attrs['cversion'] = header['SWVER']
+            grp.attrs['cversion'] = header['AVERSION']
             grp.attrs['rversion'] = '2017.00' # TODO
             grp.attrs['exptime'] = [6.4, 3.2] # TODO
             grp.attrs['ccdtemp'] = -15 # TODO
