@@ -598,7 +598,7 @@ def postage_stamps(curves, stack, station, nhalf=cfg.nhalf):
     
     return stamps
 
-def reduce_science_frames(camid, filelist, siteinfo, dirtree, darktable, astromaster, systable):
+def reduce_science_frames(camid, filelist, siteinfo, dirtree, darktable, astromaster, systable, nocal=False):
     """ Process the raw data to produce lightcurves and binned images. """    
     
     log.info('Received {} science frames.'.format(len(filelist)))  
@@ -671,16 +671,21 @@ def reduce_science_frames(camid, filelist, siteinfo, dirtree, darktable, astroma
     fast_curves = lightcurves(stack, station, astro, cat, cfg.aper_fast, cfg.skyrad, cfg.maglim_fast)
     fast_curves['aflag'] = aflag
 
-#    # Perform the live calibration.
-#    fast_curves, nobs, clouds, sigma, lstmin, lstmax, lstlen = live_calibration(station, fast_curves, cat, systable)
-#
-#    # Save the live calibration.
-#    filename = 'tmp_clouds{:08d}.hdf5'.format(station[0]['lstseq'])
-#    filename = os.path.join(dirtree['sys'], filename)
-#    
-#    log.info('Saving the live calibration to {}'.format(filename))
-#    
-#    io.tmp_clouds(filename, nobs, clouds, sigma, lstmin, lstmax, lstlen)
+    if not nocal:
+
+        # Perform the live calibration.
+        fast_curves, nobs, clouds, sigma, lstmin, lstmax, lstlen = live_calibration(station, fast_curves, cat, systable)
+    
+        # Save the live calibration.
+        filename = 'tmp_clouds{:08d}.hdf5'.format(station[0]['lstseq'])
+        filename = os.path.join(dirtree['sys'], filename)
+        
+        log.info('Saving the live calibration to {}'.format(filename))
+        
+        io.tmp_clouds(filename, nobs, clouds, sigma, lstmin, lstmax, lstlen)
+        
+    else:
+        log.warn('Skipping the live calibration, nocal=True.')
 
     # Save the fast lightcurves.
     filename = 'tmp_fast{:08d}.hdf5'.format(station[0]['lstseq'])        

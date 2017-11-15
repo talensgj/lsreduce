@@ -20,10 +20,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Initialize the reduction loop.')
     parser.add_argument('camera', type=str, choices=['LSN', 'LSE', 'LSS', 'LSW', 'LSC'],
                         help='the camera to initialize the reduction loop for')
+    parser.add_argument('--nocal', action='store_true', dest='nocal',
+                        help='Turn off the live calibration.')
     args = parser.parse_args()
 
     try:
-        rawdir_monitor.rawdir_monitor(args.camera)
+        rawdir_monitor.rawdir_monitor(args.camera, nocal=args.nocal)
     except Exception as e:
         log.error('Reduction Fault:' + traceback.format_exc())
         raise e

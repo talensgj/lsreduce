@@ -261,7 +261,7 @@ def parse_files(filelist, nbias, ndark, nflat):
 #
 #    return
 
-def rawdir_monitor(camid, twilight=5, nscience=49, nbias=20, ndark=20, nflat=20, timeout=10, step=6.4):    
+def rawdir_monitor(camid, nocal=False, twilight=5, nscience=49, nbias=20, ndark=20, nflat=20, timeout=10, step=6.4):    
 
     log = logging.getLogger('lsreduce')
     log.info('Initializing main reduction loop for camera {}.'.format(camid))    
@@ -412,7 +412,7 @@ def rawdir_monitor(camid, twilight=5, nscience=49, nbias=20, ndark=20, nflat=20,
             if (len(science_frames) == nscience) | (science_time >= (nscience + timeout)):
                 
                 # Reduce the frames.
-                reduction.reduce_science_frames(camid, science_frames, siteinfo, dirtree, darktable, astromaster, systable)
+                reduction.reduce_science_frames(camid, science_frames, siteinfo, dirtree, darktable, astromaster, systable, nocal=nocal)
 
                 # Archive the files.
                 in_queue.update(science_frames)
@@ -467,7 +467,7 @@ def rawdir_monitor(camid, twilight=5, nscience=49, nbias=20, ndark=20, nflat=20,
             
                 if (len(science_frames) > 0):
                     
-                    reduction.reduce_science_frames(camid, science_frames, siteinfo, dirtree, darktable, astromaster, systable)
+                    reduction.reduce_science_frames(camid, science_frames, siteinfo, dirtree, darktable, astromaster, systable, nocal=nocal)
                     
                     # Archive the files.
                     in_queue.update(science_frames)
