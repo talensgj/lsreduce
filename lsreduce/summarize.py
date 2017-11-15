@@ -476,7 +476,7 @@ def fig_transmission(filename, astromaster, figname=None):
     f = io.SysFile(filename)
     pg, nobs, trans = f.read_transmission()
     
-    wcspars, polpars = io.read_astromaster(astromaster)    
+    wcspars, polpars, astromask = io.read_astromaster(astromaster)    
     
     # Plot the transmission map.
     fig = plt.figure(figsize=(14,9))
