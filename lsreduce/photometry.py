@@ -151,7 +151,7 @@ class Photometry(object):
 
         return rad - .5   
     
-    def get_phot(self, image, x, y):
+    def get_phot(self, image, x, y, moonpos=None, moonrad=30.):
         """
         Perform aperture photometry.
 
@@ -189,6 +189,7 @@ class Photometry(object):
         4   : The sky value was negative.
         8   : The peak value was greater than badpixval.
         16  : One of the flux measurements was negative.
+        32  : The moon was in the way.
         
         """
         
@@ -210,6 +211,11 @@ class Photometry(object):
         esky = np.zeros((nstars,))
         peak = np.zeros((nstars,))
         flag = np.zeros((nstars,), dtype='int')
+
+        # Flag stars close to the moon.
+        if moonpos is not None:
+            moondistsq = (x - moonpos[0])**2 + (y - moonpos[1])**2
+            flag = np.where(moondistsq < moonrad**2. ,32, flag)
 
         for i in range(nstars):
             

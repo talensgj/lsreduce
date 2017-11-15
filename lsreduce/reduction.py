@@ -414,10 +414,11 @@ def lightcurves(stack, station, astro, cat, aper, skyrad, maglim):
         jd = station[i]['jd']
         lst = station[i]['lst']
         lstseq = station[i]['lstseq']
+        moonpos = [station[i]['moonx'], station[i]['moony']]
             
         # Compute positions and photometry.    
         x, y, mask = astro.world2pix(lst, ra, dec, jd=jd)  
-        flux, eflux, sky, esky, peak, pflag = phot.get_phot(image, x, y)
+        flux, eflux, sky, esky, peak, pflag = phot.get_phot(image, x, y, moonpos)
     
         nstars = len(x)    
         
