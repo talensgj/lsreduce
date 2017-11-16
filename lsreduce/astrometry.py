@@ -436,7 +436,7 @@ def pol_solve(wcspars, polpars, xpix, ypix, ra, dec):
    
 def clip_astromask(x, y, astromask):
 
-    mask = np.zeros(len(x), dtype='bool')
+    mask = np.zeros_like(x, dtype='bool')
     for i in range(len(astromask)):
         lx, ux, ly, uy = astromask[i]
         submask = (x > lx) & (x < ux) & (y > ly) & (y < uy)
