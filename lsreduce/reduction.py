@@ -362,7 +362,7 @@ def sunmoon2station(station, siteinfo, astro):
 
     for i in range(nimages):
         
-        x, y, mask = astro.world2pix(station[i]['lst'], ra[i], dec[i], jd=station[i]['jd'])
+        x, y, mask = astro.world2pix(station[i]['lst'], ra[i], dec[i])
        
         if mask:
             station[i]['moonx'] = np.around(x)
