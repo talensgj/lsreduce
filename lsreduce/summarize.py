@@ -395,7 +395,7 @@ def calibration_summary(directory, astromaster):
         images.append(figname)
     
     try:
-        figname = fig_clouds(sysfile, figname)
+        figname = fig_clouds(sysfile)
     except:
         pass
     else:
