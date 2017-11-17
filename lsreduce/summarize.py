@@ -599,7 +599,7 @@ def fig_clouds(filename, figname=None):
     clouds = clouds[idx1][:,idx2]    
     im = plt.imshow(clouds.T, interpolation='None', aspect='auto', cmap=plt.cm.viridis, vmin=-.5, vmax=.5)
     
-    idx, = np.where(np.diff(idx2) > 1)
+    idx, = np.where(np.diff(idx2) > 2)
     for i in idx:
         plt.axhline(i+1, xmax=.1, c='k', lw=2)
     
