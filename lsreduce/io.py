@@ -45,7 +45,8 @@ def _archive_worker(file, dest, delete):
         if delete:
             os.remove(file)
     except Exception as e:
-        pass #return e, traceback.format_exc()
+        log.warn(e)
+        log.warn(traceback.format_exc())
 
 
 def _archiver(queue, nworkers=5):
