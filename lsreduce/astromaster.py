@@ -90,7 +90,7 @@ def lnlike_wcs(pars, xccd, yccd, ra, dec, scale, lst):
     
     return -np.sum(dist**2)
 
-def blind_solution(image, header, ra, dec, pars0, sigma=20., margin=-100, scale=9e-3/24., order=5, maxiter=20, debug=False):
+def blind_solution(image, header, ra, dec, pars0, sigma=20., margin=-100, scale=9e-3/24., order=6, maxiter=20, debug=False):
 
     import emcee
 
@@ -256,7 +256,7 @@ def blind_solution(image, header, ra, dec, pars0, sigma=20., margin=-100, scale=
         
         # Evaluate the solution.
         xwcs, ywcs = astrometry.world2wcs(wcspars, ra, dec)
-        xpix, ypix = astrometry.wcs2pix(polpars, xwcs, ywcs)
+        xpix, ypix = astrometry.wcs2pix(polpars, xwcs, ywcs, wcspars['crpix'])
         
         # Match positions.
         idx1, idx2, dist = match(xccd, yccd, xpix, ypix)
@@ -282,7 +282,7 @@ def blind_solution(image, header, ra, dec, pars0, sigma=20., margin=-100, scale=
     if debug:
 
         xwcs, ywcs = astrometry.world2wcs(wcspars, ra, dec)
-        xpix, ypix = astrometry.wcs2pix(polpars, xwcs, ywcs)
+        xpix, ypix = astrometry.wcs2pix(polpars, xwcs, ywcs, wcspars['crpix'])
         
         plt.subplot(121, aspect='equal')
         plt.plot(xccd[idx1] - xwcs[idx2], yccd[idx1] - ywcs[idx2], 'k.')
