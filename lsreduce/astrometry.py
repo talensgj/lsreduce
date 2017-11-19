@@ -289,8 +289,8 @@ def create_wcs(wcspars, lst=None):
 def world2wcs(wcspars, ra, dec, lst=None, jd=None):
     """ Convert world coordinates to WCS-only coordinates. """    
         
-    if jd is not None:
-        ra, dec = j2000_to_equinox(ra, dec, jd)
+#    if jd is not None:
+#        ra, dec = j2000_to_equinox(ra, dec, jd)
     
     w = create_wcs(wcspars, lst)
     xwcs, ywcs = w.wcs_world2pix(ra, dec, 0)
@@ -303,8 +303,8 @@ def wcs2world(wcspars, xwcs, ywcs, lst=None, jd=None):
     w = create_wcs(wcspars, lst)
     ra, dec = w.wcs_pix2world(xwcs, ywcs, 0)
     
-    if jd is not None:
-        ra, dec = equinox_to_j2000(ra, dec, jd)
+#    if jd is not None:
+#        ra, dec = equinox_to_j2000(ra, dec, jd)
     
     return ra, dec    
 
@@ -549,7 +549,7 @@ class Astrometry(object):
             return aflag, dict()
         
         # Set the equinox.
-        ra, dec = j2000_to_equinox(ra, dec, header['jd'])        
+#        ra, dec = j2000_to_equinox(ra, dec, header['jd'])        
         
         # Evaluate the solution.
         xpix, ypix, mask = self.world2pix(header['lst'], ra, dec)

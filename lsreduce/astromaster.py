@@ -99,7 +99,7 @@ def blind_solution(image, header, ra, dec, pars0, sigma=20., margin=-100, scale=
     # Thin out the catalogue.
     print 'Selecting catalogue stars based on initial parameters.'    
 
-    ra, dec = astrometry.j2000_to_equinox(ra, dec, header['jd'])
+#    ra, dec = astrometry.j2000_to_equinox(ra, dec, header['jd'])
     
     w = initial_wcs(pars0, scale, header['lst'])
     xwcs, ywcs = w.wcs_world2pix(ra, dec, 0)
