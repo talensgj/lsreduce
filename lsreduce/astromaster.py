@@ -99,7 +99,7 @@ def blind_solution(image, header, ra, dec, pars0, sigma=20., margin=-100, scale=
     # Thin out the catalogue.
     print 'Selecting catalogue stars based on initial parameters.'    
 
-#    ra, dec = astrometry.j2000_to_equinox(ra, dec, header['jd'])
+    ra, dec = astrometry.j2000_to_equinox(ra, dec, header['jd'])
     
     w = initial_wcs(pars0, scale, header['lst'])
     xwcs, ywcs = w.wcs_world2pix(ra, dec, 0)
@@ -256,7 +256,7 @@ def blind_solution(image, header, ra, dec, pars0, sigma=20., margin=-100, scale=
         
         # Evaluate the solution.
         xwcs, ywcs = astrometry.world2wcs(wcspars, ra, dec)
-        xpix, ypix = astrometry.wcs2pix(polpars, xwcs, ywcs, wcspars['crpix'])
+        xpix, ypix = astrometry.wcs2pix(polpars, xwcs, ywcs)
         
         # Match positions.
         idx1, idx2, dist = match(xccd, yccd, xpix, ypix)
@@ -282,7 +282,7 @@ def blind_solution(image, header, ra, dec, pars0, sigma=20., margin=-100, scale=
     if debug:
 
         xwcs, ywcs = astrometry.world2wcs(wcspars, ra, dec)
-        xpix, ypix = astrometry.wcs2pix(polpars, xwcs, ywcs, wcspars['crpix'])
+        xpix, ypix = astrometry.wcs2pix(polpars, xwcs, ywcs)
         
         plt.subplot(121, aspect='equal')
         plt.plot(xccd[idx1] - xwcs[idx2], yccd[idx1] - ywcs[idx2], 'k.')
