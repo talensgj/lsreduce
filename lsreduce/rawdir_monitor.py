@@ -436,7 +436,7 @@ def rawdir_monitor(camid, nocal=False, twilight=5, nscience=49, nbias=20, ndark=
             while (len(new_files) > 0):            
             
                 # Parse files.
-                science_frames, bias_frames, dark_frames, flat_frames, remainder = parse_files(new_files, nbias, ndark, nflat)
+                science_frames, bias_frames, dark_frames, flat_frames, new_files = parse_files(new_files, nbias, ndark, nflat)
             
                 if (len(bias_frames) > 0):
                     
