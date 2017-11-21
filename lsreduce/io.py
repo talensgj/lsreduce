@@ -252,6 +252,9 @@ def read_catalogue(starcat=cfg.starcat):
     catalogue['sptype'] = data['SpType']
     catalogue['blend'] = data['Blend']
     catalogue['var'] = data['Var']
+    catalogue['dist6'] = data['Dist6']
+    catalogue['dist8'] = data['Dist8']
+    catalogue['dist10'] = data['Dist10']
     
     catalogue = np.rec.fromarrays([catalogue[key] for key in catalogue.keys()], names=[key for key in catalogue.keys()])    
     

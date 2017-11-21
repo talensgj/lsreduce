@@ -356,9 +356,9 @@ def astromaster(imagefile, pars0, cat, darkfile=None, outpath='.'):
     starcat = io.read_catalogue(cat)
     
     # Select suitably bright stars.
-    mask = (starcat['vmag'] < 7.5) & (starcat['vmag'] > 2)    
+    mask = (starcat['vmag'] < 7.5) & (starcat['vmag'] > 4) & (starcat['dist8'] > 10.)    
     ra, dec = starcat['ra'][mask], starcat['dec'][mask]    
-    
+
     # Create a master solution.
     wcspars, polpars = blind_solution(image, header, ra, dec, pars0, debug=True)
     
