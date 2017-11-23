@@ -28,7 +28,7 @@ def mmm(sky, minsky=20, maxiter=50, badpixval=None):
     
     nsky = len(sky)
     if len(sky) < minsky:
-        return -1., -1., 0.
+        return -1., -1., 1.
     
     # Determine window for robust computations.
     skymid = .5*sky[nsky/2] + .5*sky[(nsky-1)/2]   
@@ -43,7 +43,7 @@ def mmm(sky, minsky=20, maxiter=50, badpixval=None):
     idx2 = np.searchsorted(sky, cut2)
     
     if (idx2 - idx1) < minsky:
-        return -1., -1., 0.
+        return -1., -1., 1.
     
     # Get statistics.
     skymed = 0.5*sky[(idx1 + idx2)/2] + 0.5*sky[(idx1 + idx2 - 1)/2]
@@ -74,7 +74,7 @@ def mmm(sky, minsky=20, maxiter=50, badpixval=None):
         idx2 = np.searchsorted(sky, cut2)  
         
         if (idx2 - idx1) < minsky:
-            return -1., -1., 0.    
+            return -1., -1., 1.    
     
         skymn = bt.nanmean(sky[idx1:idx2])       
         sigma = bt.nanstd(sky[idx1:idx2]) 
