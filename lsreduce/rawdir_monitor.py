@@ -168,7 +168,7 @@ def parse_files(filelist, nbias, ndark, nflat):
     filelist = [filename for filename in filelist if 'flat' not in filename]
     
     science_frames = filelist
-    
+
     if (len(science_frames) > 0):    
     
         # Extract the lst sequence number from the filename.
@@ -181,13 +181,14 @@ def parse_files(filelist, nbias, ndark, nflat):
     else:
         
         nim = 0
+        
+    remainder = bias_frames[nbias:] + dark_frames[ndark:] + flat_frames[nflat:] + science_frames[nim:]
 
     bias_frames = bias_frames[:nbias]
     dark_frames = dark_frames[:ndark]
     flat_frames = flat_frames[:nflat]
     science_frames = science_frames[:nim]  
-    remainder = bias_frames[nbias:] + dark_frames[ndark:] + flat_frames[nflat:] + science_frames[nim:]
-    
+
     return science_frames, bias_frames, dark_frames, flat_frames, remainder
 
 #def rereduce(rawdir, outdir, nscience=50, ndark=50):
