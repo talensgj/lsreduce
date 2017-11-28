@@ -90,7 +90,7 @@ def lnlike_wcs(pars, xccd, yccd, ra, dec, scale, lst):
     
     return -np.sum(dist**2)
 
-def blind_solution(image, header, ra, dec, pars0, sigma=20., margin=-100, scale=9e-3/24., order=6, maxiter=20, debug=False):
+def blind_solution(image, header, ra, dec, pars0, sigma=20., margin=-100, scale=9e-3/24., order=5, maxiter=20, debug=False):
 
     import emcee
 
@@ -124,10 +124,17 @@ def blind_solution(image, header, ra, dec, pars0, sigma=20., margin=-100, scale=
         vmax = np.nanpercentile(image, 99)    
         
         plt.imshow(image, origin='lower', interpolation='None', vmin=vmin, vmax=vmax, cmap=plt.cm.Greys)
+        
         plt.plot(xwcs, ywcs, 'ro', label='WCS')
         plt.plot(xccd, yccd, 'go', label='CCD')
+        plt.xlim(-0.5, nx-0.5)
+        plt.ylim(-0.5, ny-0.5)        
+        
         plt.legend()
+        
+        plt.tight_layout()
         plt.show()      
+        plt.close()
     
     print 'Guessing WCS parameters:'    
     
@@ -216,6 +223,7 @@ def blind_solution(image, header, ra, dec, pars0, sigma=20., margin=-100, scale=
         plt.xlabel('Step')
         plt.ylabel(r'$y_0$')
         
+        plt.tight_layout()
         plt.show()
         plt.close()
         
@@ -225,10 +233,17 @@ def blind_solution(image, header, ra, dec, pars0, sigma=20., margin=-100, scale=
         vmax = np.nanpercentile(image, 99)    
         
         plt.imshow(image, origin='lower', interpolation='None', vmin=vmin, vmax=vmax, cmap=plt.cm.Greys)
+        
         plt.plot(xwcs, ywcs, 'ro', label='WCS')
         plt.plot(xccd, yccd, 'go', label='CCD')
+        plt.xlim(-0.5, nx-0.5)
+        plt.ylim(-0.5, ny-0.5)        
+        
         plt.legend()
+        
+        plt.tight_layout()
         plt.show()  
+        plt.close()
         
     print 'Creating wcspars and polpars dictionaries.'        
         
@@ -285,32 +300,41 @@ def blind_solution(image, header, ra, dec, pars0, sigma=20., margin=-100, scale=
         xpix, ypix = astrometry.wcs2pix(polpars, xwcs, ywcs)
         
         plt.subplot(121, aspect='equal')
+        
         plt.plot(xccd[idx1] - xwcs[idx2], yccd[idx1] - ywcs[idx2], 'k.')
         plt.xlim(-2, 2)
         plt.ylim(-2, 2)        
         
         plt.subplot(122, aspect='equal')
+        
         plt.plot(xccd[idx1] - xpix[idx2], yccd[idx1] - ypix[idx2], 'k.')
         plt.xlim(-2, 2)
         plt.ylim(-2, 2)
-                
+         
+        plt.tight_layout()
         plt.show()
+        plt.close()
         
         vmin = np.nanpercentile(image, 1)
         vmax = np.nanpercentile(image, 99)  
         
         plt.imshow(image, origin='lower', interpolation='None', vmin=vmin, vmax=vmax, cmap=plt.cm.Greys)
+        
         plt.plot(xwcs, ywcs, 'ro', label='WCS')
         plt.plot(xccd, yccd, 'go', label='CCD')
         plt.plot(xpix, ypix, 'bo', label='PIX')
+        plt.xlim(-0.5, nx-0.5)
+        plt.ylim(-0.5, ny-0.5)
+        
         plt.legend()
-        plt.show()    
+        
+        plt.tight_layout()
+        plt.show() 
+        plt.close()
     
     return wcspars, polpars
 
-def astromaster(imagefile, pars0, cat, darkfile=None, outpath='.'):
-    
-    pars0, astromask = pars0       
+def astromaster(imagefile, pars0, cat, astromask=None, darkfile=None, outpath='.'):    
        
     # Read the image.
     image, header = fits.getdata(imagefile, header=True)
@@ -329,15 +353,10 @@ def astromaster(imagefile, pars0, cat, darkfile=None, outpath='.'):
     
     # Remove the overscan region.
     try:
-#        lx = header['X0']
-#        ux = lx + header['XSIZE']
-#        ly = header['Y0']
-#        uy = ly + header['YSIZE'] 
-        
-        lx = 36
-        ux = 36 + 4008
-        ly = 25
-        uy = 25 + 2672         
+        lx = header['X0']
+        ux = lx + header['XSIZE']
+        ly = header['Y0']
+        uy = ly + header['YSIZE'] 
         
         image = image[ly:uy,lx:ux]    
     except:
@@ -355,8 +374,8 @@ def astromaster(imagefile, pars0, cat, darkfile=None, outpath='.'):
     # Read the catalogue.
     starcat = io.read_catalogue(cat)
     
-    # Select suitably bright stars.
-    mask = (starcat['vmag'] < 7.5) & (starcat['vmag'] > 4) & (starcat['dist8'] > 10.)    
+    # Select suitably bright and isolated stars.
+    mask = (starcat['vmag'] < 7.5) & (starcat['vmag'] > 4.) & (starcat['dist8'] > 10.)    
     ra, dec = starcat['ra'][mask], starcat['dec'][mask]    
 
     # Create a master solution.
@@ -367,13 +386,16 @@ def astromaster(imagefile, pars0, cat, darkfile=None, outpath='.'):
     aflag, astrosol = astro.solve(image, header, ra, dec)
     
     # Plot the result.
-    xpix, ypix, mask = astro.world2pix(header['lst'], ra, dec, jd=header['jd'], margin=0)    
+    xpix, ypix, mask = astro.world2pix(header['lst'], ra, dec, jd=header['jd'])    
     
+    ny, nx = image.shape
     vmin = np.nanpercentile(image, 1)
     vmax = np.nanpercentile(image, 99)  
     
     plt.imshow(image, origin='lower', interpolation='None', vmin=vmin, vmax=vmax, cmap=plt.cm.Greys)
     plt.plot(xpix, ypix, 'bo')
+    plt.xlim(-0.5, nx-0.5)
+    plt.ylim(-0.5, ny-0.5)
     plt.show()       
     
     # Write the result to file.
