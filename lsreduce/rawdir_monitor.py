@@ -493,6 +493,11 @@ def rawdir_monitor(camid, nocal=False, twilight=5, nscience=49, nbias=20, ndark=
             
             log.info('Finished daytime taks.')            
             
+            # Extra attempt at archiving.
+            filelist = listdir_fullpath(rawdir)  
+            if len(filelist) > 0:
+                io.archive_files(filelist, dirtree['rawarchive'])
+            
             # Reset.
             day_tasks_finished = True
             science_time = 0
