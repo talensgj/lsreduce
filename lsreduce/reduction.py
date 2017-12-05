@@ -638,10 +638,11 @@ def reduce_science_frames(camid, filelist, siteinfo, dirtree, darktable, astroma
     astro = astrometry.Astrometry(wcspars, polpars, astromask)  
 
     # Perform astrometry.
-    select = (cat['vmag'] <= cfg.maglim_astro) & (cat['vmag'] > 4.)           
+    select = (cat['vmag'] <= cfg.maglim_astro) & (cat['vmag'] > 4.) & (cat['dist8'] > 10.)       
     ra, dec = cat['ra'][select], cat['dec'][select]   
          
-    aflag, astrosol = astro.solve(stack[0], station[0], ra, dec) 
+    mid_idx = len(stack)//2
+    aflag, astrosol = astro.solve(stack[mid_idx], station[mid_idx], ra, dec) 
     
     # Update the master solution.
     if update_astro & (aflag < 1):
