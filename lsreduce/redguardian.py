@@ -91,8 +91,9 @@ def find_existing_process(name):
         
         cmdline = p.cmdline()
         
-        if name in cmdline:
-            return p
+        for c in cmdline:
+            if name in c:
+                return p
             
     return None
 
@@ -100,7 +101,7 @@ def monitor_loop(processes, max_restarts=1, max_restart_time=3*3600):
 
     for p in processes:
         processes[p]['proc'] = None
-        processes[p]['time'] = 0
+        processes[p]['time'] = time.time()
         processes[p]['count'] = 0
         processes[p]['warning'] = 0
 
@@ -131,13 +132,13 @@ def monitor_loop(processes, max_restarts=1, max_restart_time=3*3600):
                     
                 else:
                     
-                    if not processes[p]:
+                    if not processes[p]['warning']:
                         send_email(p, 'restart limit reached')
                         processes[p]['warning'] = True
 
             if (time.time() - processes[p]['time']) > max_restart_time:
-                processes['p']['count'] = 0 
-                processes['p']['warning'] = False
+                processes[p]['count'] = 0 
+                processes[p]['warning'] = False
 
         time.sleep(10)
         
