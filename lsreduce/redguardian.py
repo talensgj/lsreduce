@@ -10,10 +10,10 @@ import psutil
 import logging
 import traceback
 
-WD = r'c:\bring\bringreduce'
-RED = 'scripts\\bringreduce.py'
+WD = r'C:\Users\mascara\Documents\lsreduce'
+RED = r'scripts\lsred.py'
 
-PYTHON = r'C:\Users\bring\AppData\Local\Enthought\Canopy\user\scripts\python.exe'
+PYTHON = r'python'
 
 MAIL_USER = 'mascara@strw.leidenuniv.nl'
 MAIL_PASSWORD = 'XOpl@net'
@@ -33,9 +33,6 @@ BELOW_NORMAL_PRIORITY_CLASS = psutil.BELOW_NORMAL_PRIORITY_CLASS
 VERYLOW_IOPRIORITY_CLASS = 0
 LOW_IOPRIORITY_CLASS = 1
 NORMAL_IOPRIORITY_CLASS = 2
-
-MAXRESTART = 1
-MAX_RESTART_TIME_INTERVAL = 3*3600
 
 def start_program(process):
     
@@ -90,20 +87,14 @@ def send_email(program, info):
 def find_existing_process(name):
     """This is probably rickety"""
     
-    if isinstance(name, tuple):
-        name = name[0]
-        
     for p in psutil.process_iter():
         
         cmdline = p.cmdline()
         
-        for c in cmdline:
+        if name in cmdline:
+            return p
             
-            if name in c:
-                
-                return p
     return None
-
 
 def monitor_loop(processes, max_restarts=1, max_restart_time=3*3600):
 
@@ -115,7 +106,7 @@ def monitor_loop(processes, max_restarts=1, max_restart_time=3*3600):
 
     for p in processes:
         
-        processes[p]['proc'] = find_existing_process(processes[p]['cmdline'])
+        processes[p]['proc'] = find_existing_process(p)
         
         if processes[p]['proc'] is None:
             processes[p]['proc'] = start_program(processes[p])
@@ -167,7 +158,7 @@ if __name__ == '__main__':
 
     # Create process.
     processes = dict()
-    processes['reduction'] = {'cmdline':[PYTHON, RED, args.camera], 'wd': WD, 'priority': BELOW_NORMAL_PRIORITY_CLASS, 'iopriority': LOW_IOPRIORITY_CLASS}
+    processes[RED] = {'cmdline':[PYTHON, RED, args.camera], 'wd': WD, 'priority': BELOW_NORMAL_PRIORITY_CLASS, 'iopriority': LOW_IOPRIORITY_CLASS}
 
     try:
         monitor_loop(processes)
