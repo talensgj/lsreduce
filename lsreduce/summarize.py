@@ -331,7 +331,7 @@ def fig_photometry(fastphot, slowphot, figname):
             if np.mean(lc['flux0']/exptime1[idx]) > 30000:
                 continue
             
-            l, = ax.plot(utc1[idx], lc['flux0']/exptime1[idx], '.', label=ascc[i], c=color_sequence[i], zorder=1)
+            l, = ax.plot(utc1[idx], lc['flux0']/exptime1[idx], '.', label=ascc[i], c=color_sequence[i%20], zorder=1)
             lines.append(l)            
             
             # Add slow photometry.
