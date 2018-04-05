@@ -151,7 +151,7 @@ class Photometry(object):
 
         return rad - .5   
     
-    def get_phot(self, image, x, y, moonpos=None, moonrad=30.):
+    def __call__(self, image, x, y, moonpos=None, moonrad=30.):
         """
         Perform aperture photometry.
 

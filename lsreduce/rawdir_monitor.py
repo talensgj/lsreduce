@@ -191,76 +191,90 @@ def parse_files(filelist, nbias, ndark, nflat):
 
     return science_frames, bias_frames, dark_frames, flat_frames, remainder
 
-#def rereduce(rawdir, outdir, nscience=50, ndark=50):
-#
-#    import shutil
-#
-#    log = logging.getLogger('rereduce')
-#    log.info('Starting rereduction.')
-#
-#    # Check if the directories exist.
-#    if not os.path.exists(rawdir):
-#        raise IOError('Directory {} does not exist.'.format(rawdir))
-#        
-#    if not os.path.exists(outdir):
-#        raise IOError('Directory {} does not exist.'.format(outdir))
-#
-#    # Parse the raw location to obtain the date and camid.
-#    head, tail = os.path.split(rawdir)
-#    date, camid = tail[:8], tail[8:]
-#
-#    # Clean up the directory where the results will be written.
-#    contents = listdir_fullpath(outdir)
-#    olddir = os.path.join(outdir, 'old')
-#    os.makedirs(olddir)
-#    for name in contents:
-#        shutil.move(name, olddir)
-#        
-#    # Create the dirtree for rereduction.
-#    dirtree = dict()
-#    dirtree['tmp'] = outdir
-#    dirtree['binned'] = os.path.join(outdir, 'binned')
-#    dirtree['lightcurves'] = os.path.join(outdir, 'lightcurves')
-#    dirtree['thumbs'] = os.path.join(outdir, 'thumbs')
-#    dirtree['sys'] = os.path.join(outdir, 'sys')    
-#    dirtree['targets'] = os.path.join(outdir, 'targets')  
-#    
-#    for key in dirtree.keys():
-#        
-#        try:
-#            os.makedirs(dirtree[key])
-#        except:
-#            log.warn('Directory exists, {}'.format(dirtree[key])) 
-#
-#    # Get the siteinfo, darktables and astrometry.
-#    siteinfo = io.read_siteinfo(cfg.siteinfo, cfg.sitename)
-#    darktables = cfg.darktables[camid] 
-#    astromaster = cfg.astromaster[camid]
-#    systable = cfg.systable[camid]
-#
-#    # Get the files to be processed.
-#    filelist = listdir_fullpath(rawdir)
-#
-#    while (len(filelist) > 0):            
-#
-#        # Parse files.
-#        science_frames, dark_frames, filelist = parse_files(filelist, nscience, ndark)
-#
-#        if (len(dark_frames) > 0):
-#
-#            reduction.reduce_dark_frames(camid, dark_frames, dirtree, darktables)
-#
-#        if (len(science_frames) > 0):
-#
-#            reduction.reduce_science_frames(camid, science_frames, siteinfo, dirtree, darktables, astromaster, systable)
-#            
-#    # Combine temporary lightcurve files.
-#    combine_temporary_files(date, camid, dirtree)
-#
-#    # Send summary email.
-#    summarize.reduction_summary(dirtree['lightcurves']) 
-#
-#    return
+def rereduce(rawdir, outdir, nscience=49, nbias=20, ndark=20, nflat=20, **kwargs):
+
+    import shutil
+
+    log = logging.getLogger('rereduce')
+    log.info('Starting rereduction.')
+
+    # Check if the raw directory exists.
+    if not os.path.exists(rawdir):
+        raise IOError('Directory {} does not exist.'.format(rawdir))
+        
+    # Check if the destination exists.
+    if not os.path.exists(outdir):
+        os.makedirs(outdir)
+    else:
+        # Clean up the directory where the results will be written.
+        contents = listdir_fullpath(outdir)
+        olddir = os.path.join(outdir, 'old')
+        os.makedirs(olddir)
+        for name in contents:
+            shutil.move(name, olddir)
+
+    # Parse the raw location to obtain the date and camid.
+    head, tail = os.path.split(rawdir)
+    date, camid = tail[:8], tail[8:]
+ 
+    # Create the dirtree for rereduction.
+    dirtree = dict()
+    dirtree['tmp'] = outdir
+    dirtree['binned'] = os.path.join(outdir, 'binned')
+    dirtree['lightcurves'] = os.path.join(outdir, 'lightcurves')
+    dirtree['thumbs'] = os.path.join(outdir, 'thumbs')
+    dirtree['sys'] = os.path.join(outdir, 'sys')    
+    dirtree['targets'] = os.path.join(outdir, 'targets')  
+    
+    for key in dirtree.keys():
+        
+        try:
+            os.makedirs(dirtree[key])
+        except:
+            log.warn('Directory exists, {}'.format(dirtree[key])) 
+
+    # Get the siteinfo, darktables and astrometry.
+    starcat = kwargs.pop('starcat', cfg.starcat)
+    targets = kwargs.pop('targets', cfg.targets)
+    siteinfo = kwargs.pop('siteinfo', cfg.siteinfo)
+    sitename = kwargs.pop('sitename', cfg.sitename)
+    siteinfo = io.read_siteinfo(siteinfo, sitename)
+    
+    darktable = kwargs.pop('darktable', cfg.darktable)[camid] 
+    astromaster = kwargs.pop('astromaster', cfg.astromaster)[camid]
+    systable = kwargs.pop('systable', cfg.systable)[camid]
+
+    # Get the files to be processed.
+    filelist = listdir_fullpath(rawdir)
+
+    while (len(filelist) > 0):            
+
+        # Parse files.
+        science_frames, bias_frames, dark_frames, flat_frames, filelist = parse_files(filelist, nbias, ndark, nflat) 
+
+        if (len(bias_frames) > 0):
+                    
+            reduction.reduce_bias_frames(camid, bias_frames, dirtree)
+                
+        if (len(dark_frames) > 0):
+            
+            reduction.reduce_dark_frames(camid, dark_frames, dirtree, darktable)
+            
+        if (len(flat_frames) > 0):
+            
+            reduction.reduce_flat_frames(camid, flat_frames, dirtree, darktable)
+    
+        if (len(science_frames) > 0):
+            
+            reduction.reduce_science_frames(camid, science_frames, siteinfo, dirtree, darktable, astromaster, systable, nocal=True, starcat=starcat, targets=targets)
+            
+    # Combine temporary lightcurve files.
+    combine_temporary_files(date, camid, dirtree)
+
+    # Send summary email.
+    summarize.reduction_summary(dirtree['lightcurves']) 
+
+    return
 
 def rawdir_monitor(camid, nocal=False, twilight=5, nscience=49, nbias=20, ndark=20, nflat=20, timeout=10, step=6.4):    
 

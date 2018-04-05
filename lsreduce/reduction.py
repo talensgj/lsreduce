@@ -411,7 +411,7 @@ def lightcurves(stack, station, astro, cat, aper, skyrad, maglim):
             
         # Compute positions and photometry.    
         x, y, mask = astro.world2pix(lst, ra, dec, jd=jd)  
-        flux, eflux, sky, esky, peak, pflag = phot.get_phot(image, x, y, moonpos)
+        flux, eflux, sky, esky, peak, pflag = phot(image, x, y, moonpos)
     
         nstars = len(x)    
         
@@ -591,13 +591,13 @@ def postage_stamps(curves, stack, station, nhalf=cfg.nhalf):
     
     return stamps
 
-def reduce_science_frames(camid, filelist, siteinfo, dirtree, darktable, astromaster, systable, nocal=False):
+def reduce_science_frames(camid, filelist, siteinfo, dirtree, darktable, astromaster, systable, nocal=False, starcat=cfg.starcat, targets=cfg.targets):
     """ Process the raw data to produce lightcurves and binned images. """    
     
     log.info('Received {} science frames.'.format(len(filelist)))  
     
     # Read the catalogue.
-    cat = io.read_catalogue()            
+    cat = io.read_catalogue(starcat)            
     
     # Read the files.
     stack, headers = io.read_stack(filelist)
@@ -694,7 +694,7 @@ def reduce_science_frames(camid, filelist, siteinfo, dirtree, darktable, astroma
     f.add_astrometry(astrosol)
     
     # Create postage stamps.
-    targets = io.read_targets(cfg.targets)
+    targets = io.read_targets(targets)
     for key in targets.keys():
         
         log.info('Trying to make postage stamps for target group {}'.format(key))     
