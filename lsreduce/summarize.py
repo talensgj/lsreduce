@@ -11,6 +11,9 @@ import glob
 import h5py
 import numpy as np
 
+import matplotlib
+matplotlib.use('Agg')
+
 import matplotlib.pyplot as plt
 import matplotlib.dates as dates
 import matplotlib.gridspec as gridspec
