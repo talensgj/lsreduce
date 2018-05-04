@@ -9,9 +9,6 @@ import numpy as np
 import logging
 import multiprocessing as mp
 
-from collections import namedtuple 
-Quality = namedtuple('Quality', 'niter chisq npoints npars')
-
 from . import misc
 from . import io
 from . import grids
@@ -100,7 +97,9 @@ def cdecor_spatial(idx2, idx3, value, error, x, y, maxiter=100, dtol=1e-3, verbo
     chisq = weights*(value - par2[idx2] - ipx)**2        
     chisq = np.sum(chisq)
     
-    return par2, par3, Quality(niter, chisq, npoints, npars)
+    quality = {'niter':niter, 'chisq':chisq, 'npoints':npoints, 'npars':npars}    
+    
+    return par2, par3, quality
     
 def cdecor_temporal(idx1, idx2, value, error, sigma1, sigma2, maxiter=100, dtol=1e-3, verbose=False):
     """ Perform a coarse decorrelation with extra error terms.
@@ -174,7 +173,9 @@ def cdecor_temporal(idx1, idx2, value, error, sigma1, sigma2, maxiter=100, dtol=
     chisq = (value - par2[idx2])**2/(error**2 + (sigma1**2)[idx1] + (sigma2**2)[idx2])     
     chisq = np.sum(chisq)
     
-    return par2, sigma1, sigma2, Quality(niter, chisq, npoints, npars)
+    quality = {'niter':niter, 'chisq':chisq, 'npoints':npoints, 'npars':npars}
+    
+    return par2, sigma1, sigma2, quality
 
 def spatial_worker(in_queue, out_queue):
     
@@ -394,17 +395,17 @@ class CoarseDecorVmag(object):
             
             idx, camtransidx, intrapixidx, trans, amplitudes, quality = item
             
-            if np.isnan(quality.chisq):
+            if np.isnan(quality['chisq']):
                 self.log.warning('Bad result in spatial solver on ring {}.'.format(idx))
                 
             # Store results.
             self.trans['trans'][camtransidx, idx] = trans
             self.intrapix['amplitudes'][intrapixidx, idx] = amplitudes
             
-            self.spatial['niter'][idx] = quality.niter
-            self.spatial['chisq'][idx] = quality.chisq
-            self.spatial['npoints'][idx] = quality.npoints
-            self.spatial['npars'][idx] = quality.npars 
+            self.spatial['niter'][idx] = quality['niter']
+            self.spatial['chisq'][idx] = quality['chisq']
+            self.spatial['npoints'][idx] = quality['npoints']
+            self.spatial['npars'][idx] = quality['npars'] 
             
         return
         
@@ -469,7 +470,7 @@ class CoarseDecorVmag(object):
             
             idx, staridx, lstseq, clouds, sigma1, sigma2, quality = item
         
-            if np.isnan(quality.chisq):
+            if np.isnan(quality['chisq']):
                 self.log.warning('Bad result in temporal solver on pixel {}.'.format(idx))     
         
             # Store results.
@@ -477,10 +478,10 @@ class CoarseDecorVmag(object):
             self.clouds['clouds'][idx, lstseq] = clouds
             self.clouds['sigma'][idx, lstseq] = sigma2
             
-            self.temporal['niter'][idx] = quality.niter
-            self.temporal['chisq'][idx] = quality.chisq
-            self.temporal['npoints'][idx] = quality.npoints
-            self.temporal['npars'][idx] = quality.npars 
+            self.temporal['niter'][idx] = quality['niter']
+            self.temporal['chisq'][idx] = quality['chisq']
+            self.temporal['npoints'][idx] = quality['npoints']
+            self.temporal['npars'][idx] = quality['npars']
             
         # Set got_sky to True.
         self.got_sky = True
