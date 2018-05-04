@@ -6,7 +6,11 @@ import os
 import h5py
 import numpy as np
 
+import logging
+import multiprocessing as mp
+
 from collections import namedtuple 
+Quality = namedtuple('Quality', 'niter chisq npoints npars')
 
 from . import misc
 from . import io
@@ -14,9 +18,7 @@ from . import grids
 from . import sigmas
 from . import astrometry
 
-Quality = namedtuple('Quality', 'niter chisq npoints npars')
-
-def cdecor_spatial(idx2, idx3, value, error, x, y, maxiter=100, dtol=1e-3, verbose=True):
+def cdecor_spatial(idx2, idx3, value, error, x, y, maxiter=100, dtol=1e-3, verbose=False):
     """ Perform a coarse decorrelation with intrapixel variations.
     
     Args:
@@ -100,7 +102,7 @@ def cdecor_spatial(idx2, idx3, value, error, x, y, maxiter=100, dtol=1e-3, verbo
     
     return par2, par3, Quality(niter, chisq, npoints, npars)
     
-def cdecor_temporal(idx1, idx2, value, error, sigma1, sigma2, maxiter=100, dtol=1e-3, verbose=True):
+def cdecor_temporal(idx1, idx2, value, error, sigma1, sigma2, maxiter=100, dtol=1e-3, verbose=False):
     """ Perform a coarse decorrelation with extra error terms.
     
     Args:
@@ -174,21 +176,52 @@ def cdecor_temporal(idx1, idx2, value, error, sigma1, sigma2, maxiter=100, dtol=
     
     return par2, sigma1, sigma2, Quality(niter, chisq, npoints, npars)
 
+def spatial_worker(in_queue, out_queue):
+    
+    while True:
+        
+        item = in_queue.get()
+    
+        if (item == 'DONE'):
+            break
+        else:
+            idx, camtransidx, intrapixidx, idx2, idx4, mag, emag, x, y = item
+            trans, amp, quality = cdecor_spatial(idx2, idx4, mag, emag, x, y)
+            out_queue.put((idx, camtransidx, intrapixidx, trans, amp, quality))
+
+    return
+    
+def temporal_worker(in_queue, out_queue):
+    
+    while True:
+        
+        item = in_queue.get()
+        
+        if (item == 'DONE'):
+            break
+        else:
+            idx, staridx, lstseq, idx1, idx3, mag, emag, sig1, sig2 = item
+            clouds, sig1, sig2, quality = cdecor_temporal(idx1, idx3, mag, emag, sig1, sig2)
+            out_queue.put((idx, staridx, lstseq, clouds, sig1, sig2, quality))
+
+    return
+
 class CoarseDecorVmag(object):
     
     def __init__(self, photfile, aperture, sysfile=None, **kwargs):
         """ Perform a coarse decorrelation on all data in a given file."""
+        
+        self.log = logging.getLogger('bringreduce').getChild('calibration')        
         
         # fLC file and aperture to work on.
         self.photfile = photfile
         self.aper = aperture
         
         if not os.path.isfile(self.photfile):
-            print 'File not found:', self.photfile
-            print 'exiting...'
-            exit()
+            self.log.warning('File {} not found, terminating.'.format(self.photfile))
+            return
         else:
-            print 'Calculating corrections for aperture %i of file:'%self.aper, self.photfile
+            self.log.info('Calculating corrections for aperture {} of file {}'.format(self.aper, self.photfile))
         
         # The systematics file.
         if sysfile is None:
@@ -200,17 +233,17 @@ class CoarseDecorVmag(object):
         self.sysfile = sysfile
         
         if os.path.isfile(self.sysfile):
-            print 'Systematics file already exists:', self.sysfile
-            print 'exiting...'
-            exit()
+            self.log.warning('Systematics file {} already exists, terminating'.format(self.sysfile))
+            return
         else:
-            print 'Writing results to:', self.sysfile
+            self.log.info('Writing results to {}'.format(self.sysfile))
         
         # Initialize with default parameters unless arguments were given.
         self.verbose = kwargs.pop('verbose', False)
         self.dtol = kwargs.pop('dtol', 1e-3)
         self.outer_maxiter = kwargs.pop('outer_maxiter', 5)
         self.inner_maxiter = kwargs.pop('inner_maxiter', 100)
+        self.nprocs = kwargs.pop('nprocs', 4)
         
         self.camgrid = 'polar'
         self.camnx = kwargs.pop('camnx', 13500)
@@ -234,14 +267,13 @@ class CoarseDecorVmag(object):
         elif (mode == 'temporal'):
             mask = (self.skyidx == index)
         else:
-            print 'Unknown mode {}, how did you even get here?'.format(mode)
-            exit()
+            self.log.warning('Unknown mode {}, how did you even get here?').format(mode)
+            return
         
         ascc = self.stars['ascc'][mask]
         ra = self.stars['ra'][mask]
         dec = self.stars['dec'][mask]
         nobs = self.stars['nobs'][mask]
-        vmag = self.stars['vmag'][mask]
         
         staridx = self.staridx[mask]
         skyidx = self.skyidx[mask]
@@ -262,10 +294,8 @@ class CoarseDecorVmag(object):
         lst = station['lst']
         exptime = station['exptime']
         
-        # Convert flux to magnitudes:
-        mag, emag = misc.flux2mag(flux/exptime, eflux/exptime)
-        vmag = np.repeat(vmag, nobs)
-        mag = mag - vmag
+        # Normalize fluxes with exptime.
+        flux, eflux = flux/exptime, eflux/exptime
         
         # Compute the hour angle.
         ra = np.repeat(ra, nobs)
@@ -282,8 +312,8 @@ class CoarseDecorVmag(object):
         # Remove bad data.
         mask = (aflag == 0) & (pflag == 0)
         
-        mag = mag[mask]
-        emag = emag[mask]
+        flux = flux[mask]
+        eflux = eflux[mask]
         x = x[mask]
         y = y[mask]
         
@@ -294,12 +324,21 @@ class CoarseDecorVmag(object):
         skyidx = skyidx[mask]
         lstseq = lstseq[mask]
         
+        # Convert flux to magnitudes.
+        mag, emag = misc.flux2mag(flux, eflux)
+        mag = mag - self.stars['vmag'][staridx]
+        
         return mag, emag, x, y, staridx, decidx, camtransidx, intrapixidx, skyidx, lstseq
     
     def _spatial(self):
         """ Solve for the time-independent camera transmission and intrapixel 
         variations.
         """
+        
+        mngr = mp.Manager()
+        in_queue = mp.Queue(2*self.nprocs)
+        out_queue = mngr.Queue()
+        the_pool = mp.Pool(self.nprocs, spatial_worker, (in_queue, out_queue))
         
         decidx = np.unique(self.decidx)
     
@@ -310,23 +349,56 @@ class CoarseDecorVmag(object):
             
             if (len(mag) == 0): continue
             
+            if not np.all(np.isfinite(mag)):
+                self.log.warning('Bad mag in spatial solver on ring {}'.format(idx))
+                
+            if not np.all(np.isfinite(emag)):
+                self.log.warning('Bad emag in spatial solver on ring {}'.format(idx))
+                
+            if not np.all(np.isfinite(x)):
+                self.log.warning('Bad x in spatial solver on ring {}'.format(idx))
+                
+            if not np.all(np.isfinite(y)):
+                self.log.warning('Bad y in spatial solver on ring {}'.format(idx))            
+            
             # Apply temporal correction if known.
             if self.got_sky:
                 mag = mag - self.clouds['clouds'][skyidx, lstseq]
+                
+                if not np.all(np.isfinite(mag)):
+                    self.log.warning('Bad cloud corrected mag in spatial solver on ring {}'.format(idx))                
+                
                 emag = np.sqrt(emag**2 + self.magnitudes['sigma'][staridx]**2 + self.clouds['sigma'][skyidx, lstseq]**2)
+
+                if not np.all(np.isfinite(emag)):
+                    self.log.warning('Bad enhanced emag in spatial solver on ring {}'.format(idx))            
             
             # Create unique indices.
             camtransidx, idx2 = np.unique(camtransidx, return_inverse=True)
             intrapixidx, idx4 = np.unique(intrapixidx, return_inverse=True)
             
-            # Calculate new spatial correction.
-            trans, amplitudes, quality = cdecor_spatial(idx2, idx4, mag, emag, x, y, maxiter=self.inner_maxiter, dtol=self.dtol, verbose=self.verbose)
-            
-            # Store results.
             self.trans['nobs'][camtransidx, idx] = np.bincount(idx2)
-            self.trans['trans'][camtransidx, idx] = trans
-            
             self.intrapix['nobs'][intrapixidx, idx] = np.bincount(idx4)
+            
+            in_queue.put((idx, camtransidx, intrapixidx, idx2, idx4, mag, emag, x, y))
+            
+        for i in range(self.nprocs):
+            in_queue.put('DONE')
+            
+        the_pool.close()
+        the_pool.join()
+                        
+        out_queue.put('DONE')
+        
+        for item in iter(out_queue.get, 'DONE'):
+            
+            idx, camtransidx, intrapixidx, trans, amplitudes, quality = item
+            
+            if np.isnan(quality.chisq):
+                self.log.warning('Bad result in spatial solver on ring {}.'.format(idx))
+                
+            # Store results.
+            self.trans['trans'][camtransidx, idx] = trans
             self.intrapix['amplitudes'][intrapixidx, idx] = amplitudes
             
             self.spatial['niter'][idx] = quality.niter
@@ -338,7 +410,12 @@ class CoarseDecorVmag(object):
         
     def _temporal(self):
         """ Solve for the time-dependent sky transmission."""
-        
+
+        mngr = mp.Manager()
+        in_queue = mp.Queue(2*self.nprocs)
+        out_queue = mngr.Queue()
+        the_pool = mp.Pool(self.nprocs, temporal_worker, (in_queue, out_queue))
+
         skyidx = np.unique(self.skyidx)
         
         for idx in skyidx:           
@@ -347,23 +424,56 @@ class CoarseDecorVmag(object):
             mag, emag, x, y, staridx, decidx, camtransidx, intrapixidx, _, lstseq = self._read_data(idx, mode='temporal')
             
             if (len(mag) == 0): continue
+                
+            if not np.all(np.isfinite(mag)):
+                self.log.warning('Bad mag in temporal solver on pixel {}'.format(idx))
+                
+            if not np.all(np.isfinite(emag)):
+                self.log.warning('Bad emag in temporal solver on pixel {}'.format(idx))
+                
+            if not np.all(np.isfinite(x)):
+                self.log.warning('Bad x in temporal solver on pixel {}'.format(idx))
+                
+            if not np.all(np.isfinite(y)):
+                self.log.warning('Bad y in temporal solver on pixel {}'.format(idx))
             
             # Apply known spatial correction.
             mag = mag - self.trans['trans'][camtransidx, decidx]
+            
+            if not np.all(np.isfinite(mag)):
+                self.log.warning('Bad trans corrected mag in temporal solver on pixel {}'.format(idx))            
+            
             mag = mag - np.sum(self.intrapix['amplitudes'][intrapixidx, decidx]*np.array([np.sin(2*np.pi*x), np.cos(2*np.pi*x), np.sin(2*np.pi*y), np.cos(2*np.pi*y)]).T, axis=1)
+            
+            if not np.all(np.isfinite(mag)):
+                self.log.warning('Bad ipx corrected mag in temporal solver on pixel {}'.format(idx))            
             
             # Create unique indices.
             staridx, idx1 = np.unique(staridx, return_inverse=True)
             lstseq, idx3 = np.unique(lstseq, return_inverse=True)
             
-            # Calculate new temporal correction.
-            clouds, sigma1, sigma2, quality = cdecor_temporal(idx1, idx3, mag, emag, self.magnitudes['sigma'][staridx], self.clouds['sigma'][idx, lstseq], maxiter=self.inner_maxiter, dtol=self.dtol, verbose=self.verbose)
-      
-            # Store results.
             self.magnitudes['nobs'][staridx] = np.bincount(idx1)
-            self.magnitudes['sigma'][staridx] = sigma1
-            
             self.clouds['nobs'][idx, lstseq] = np.bincount(idx3)
+            
+            in_queue.put((idx, staridx, lstseq, idx1, idx3, mag, emag, self.magnitudes['sigma'][staridx], self.clouds['sigma'][idx, lstseq]))
+            
+        for i in range(self.nprocs):
+            in_queue.put('DONE')
+            
+        the_pool.close()
+        the_pool.join()
+                        
+        out_queue.put('DONE')
+        
+        for item in iter(out_queue.get, 'DONE'):
+            
+            idx, staridx, lstseq, clouds, sigma1, sigma2, quality = item
+        
+            if np.isnan(quality.chisq):
+                self.log.warning('Bad result in temporal solver on pixel {}.'.format(idx))     
+        
+            # Store results.
+            self.magnitudes['sigma'][staridx] = sigma1
             self.clouds['clouds'][idx, lstseq] = clouds
             self.clouds['sigma'][idx, lstseq] = sigma2
             
@@ -396,10 +506,10 @@ class CoarseDecorVmag(object):
         try:
             hg = grids.HealpixGrid(8)
         except:
-            print 'Failed to create instance of HealpixGrid, using catalogue look-up instead.'
+            self.log.info('Failed to create instance of HealpixGrid, using catalogue look-up instead.')
             self.skyidx = io.read_skyidx(self.stars['ascc'])
         else:
-            print 'Using healpy for sky-index generation.'
+            self.log.info('Using healpy for sky-index generation.')
             self.skyidx = hg.radec2idx(self.stars['ra'], self.stars['dec'])
         
         self.lstmin = np.amin(self.station['lstseq'])
@@ -447,15 +557,15 @@ class CoarseDecorVmag(object):
         self.got_sky = False
         
         # Perform the coarse decorrelation.
-        print 'Performing coarse decorrelation for:', self.photfile
+        self.log.info('Performing coarse decorrelation for: {}'.format(self.photfile))
         for niter in range(self.outer_maxiter):
         
-            print 'Iteration %i out of %i:'%(niter + 1, self.outer_maxiter)
+            self.log.info('Iteration {} out of {}:'.format(niter + 1, self.outer_maxiter))
             
-            print '    Calculating camera systematics...'
+            self.log.info('    Calculating camera systematics...')
             self._spatial()
             
-            print '    Calculating atmospheric systematics...'
+            self.log.info('    Calculating atmospheric systematics...')
             self._temporal()
         
         # Write the results to file.
