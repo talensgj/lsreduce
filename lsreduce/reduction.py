@@ -387,7 +387,7 @@ def lightcurves(stack, station, astro, cat, aper, skyrad, maglim):
     phot = photometry.Photometry(aper, skyrad)    
     
     # Select stars brighter than the magnitude limit.
-    select = (cat['vmag'] <= maglim)
+    select = (cat['vmag'] <= maglim) | cat['inclusion']
     ascc = cat['ascc'][select]
     ra, dec = cat['ra'][select], cat['dec'][select]    
     
@@ -476,7 +476,8 @@ def live_calibration(station, curves, cat, systable):
     args = np.searchsorted(cat['ascc'], curves['ascc'])
     ra = cat['ra'][args]
     dec = cat['dec'][args]    
-    vmag = cat['vmag'][args]        
+    vmag = cat['vmag'][args]
+    incl = cat['inclusion'][args]        
     
     # Convert fluxes to magnitudes.
     mag, emag = misc.flux2mag(curves['flux0']/exptime, curves['eflux0']/exptime)
@@ -521,7 +522,7 @@ def live_calibration(station, curves, cat, systable):
     skyidx = io.read_skyidx(curves['ascc'])  
     
     # Compute the cloud calibrations.
-    mask = (curves['pflag'] == 0) & (curves['aflag'] == 0) & np.isfinite(sys)
+    mask = (curves['pflag'] == 0) & (curves['aflag'] == 0) & np.isfinite(sys) & (~incl)
     nobs, clouds, sigma = calibrate_clouds(lstidx[mask], skyidx[mask], (mag - vmag - sys)[mask], (emag**2 + sigma**2)[mask], lstlen)
         
     sys = sys + clouds[lstidx,skyidx]

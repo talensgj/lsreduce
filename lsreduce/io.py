@@ -255,6 +255,7 @@ def read_catalogue(starcat=cfg.starcat):
     catalogue['dist6'] = data['Dist6']
     catalogue['dist8'] = data['Dist8']
     catalogue['dist10'] = data['Dist10']
+    catalogue['inclusion'] = data['Inclusion']
     
     catalogue = np.rec.fromarrays([catalogue[key] for key in catalogue.keys()], names=[key for key in catalogue.keys()])    
     

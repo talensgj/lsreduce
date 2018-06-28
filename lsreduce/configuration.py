@@ -20,7 +20,7 @@ tmpdir = r'd:\tmp'
 ### Locations of various files.
 ###############################################################################
 
-starcat = os.path.join(confdir, 'bringcat20170327.fits') # Location of the stellar catalogue.
+starcat = os.path.join(confdir, 'bringcat20180428.fits') # Location of the stellar catalogue.
 siteinfo = os.path.join(confdir, 'siteinfo.dat') # Location of the siteinfo file.
 targets = os.path.join(confdir, 'targets.dat') # Location of the targets file.
 

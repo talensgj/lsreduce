@@ -500,6 +500,10 @@ class CoarseDecorVmag(object):
         self.stars = self.f.read_stars(['ascc', 'ra', 'dec', 'vmag', 'nobs'])
         self.station = self.f.read_station(['lstseq', 'lst'])        
         
+        mask = self.stars['vmag'] >= 8.4
+        for key in self.stars.keys():
+            self.stars[key] = self.stars[key][mask]
+        
         # Create indices.
         self.staridx = np.arange(len(self.stars['ascc']))
         _, self.decidx = self.camgrid.radec2idx(self.stars['ra'], self.stars['dec'])
