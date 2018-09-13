@@ -725,7 +725,7 @@ def reduce_science_frames(camid, filelist, siteinfo, dirtree, darktable, astroma
     
     binimage, binheader = binned_image(stack, station, headers[0], astro)
         
-    filename = 'bin_{:08d}{}.fits.gz'.format(binheader['lstseq'], camid)
+    filename = 'bin_{:08d}{}.fits'.format(binheader['lstseq'], camid)
     filename = os.path.join(dirtree['binned'], filename)
     
     log.info('Saving binned image to {}'.format(filename))        
