@@ -307,7 +307,8 @@ def write_binimage(filename, image, header, overwrite=True):
 
     image = image.astype('float32')
     
-    hdu = fits.CompImageHDU(image, header, compression_type='RICE_1', tile_size=[167,167], quantize_level=32)
+    hdu = fits.ImageHDU(image, header) # Adds info to header, CompImageHDU does not do this on its own and crashes.
+    hdu = fits.CompImageHDU(image, hdu.header, compression_type='RICE_1', tile_size=[167,167], quantize_level=32)
     hdu.writeto(filename, clobber=overwrite)
     
     return
