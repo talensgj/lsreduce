@@ -32,7 +32,8 @@ color_sequence = ['#1f77b4', '#aec7e8', '#ff7f0e', '#ffbb78', '#2ca02c',
                   '#8c564b', '#c49c94', '#e377c2', '#f7b6d2', '#7f7f7f',
                   '#c7c7c7', '#bcbd22', '#dbdb8d', '#17becf', '#9edae5']
 
-from . import creds, astrometry, io
+from . import astrometry, io
+from . import configuration as cfg
 
 def send_mail(subject, message, images):  
     
@@ -41,10 +42,12 @@ def send_mail(subject, message, images):
     from email.MIMEText import MIMEText
     from email.MIMEImage import MIMEImage  
 
+    mailing = io.read_mailing(cfg.mailing)
+
     msg = MIMEMultipart()
     msg['Subject'] = subject
-    msg['From'] = 'mascara@strw.leidenuniv.nl'
-    msg['To'] = ', '.join(creds.recipients)      
+    msg['From'] = mailing['sender']
+    msg['To'] = ', '.join(mailing['recipients'])      
     
     text = MIMEText(message)
     msg.attach(text)
@@ -60,11 +63,11 @@ def send_mail(subject, message, images):
             
     try:
         
-        smtpserver = smtplib.SMTP("smtp.strw.leidenuniv.nl", 587)
+        smtpserver = smtplib.SMTP(mailing['host'], mailing['port'])
         smtpserver.ehlo()
         smtpserver.starttls()
-        smtpserver.login(creds.user, creds.pwd)    
-        smtpserver.sendmail(creds.user, creds.recipients, msg.as_string())
+        smtpserver.login(mailing['user'], mailing['pwd'])    
+        smtpserver.sendmail(mailing['user'], mailing['recipients'], msg.as_string())
         smtpserver.close()
         
     except:

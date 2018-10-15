@@ -18,6 +18,8 @@ import atexit
 import h5py
 from astropy.io import fits
     
+import yaml
+
 from . import configuration as cfg
 from . import grids
 
@@ -100,25 +102,18 @@ def read_siteinfo(filename, sitename):
     
 def read_targets(filename):
     
-    with open(filename, 'r') as f:
-        lines = f.readlines()
-
-    # Remove end of line and blank lines.
-    lines = [line.rstrip('\n') for line in lines] 
-    lines = [line for line in lines if line]
-    
-    # Split names and targets.
-    targets = {line.rsplit(':')[0]:line.rsplit(':')[1] for line in lines}
-    
-    # Split targets.
-    for key in targets.keys():
-        line = targets[key]
-        line = line.rsplit(',')
-        line = [i.strip() for i in line] 
-        targets[key] = line    
+    with open(filename, 'r') as ymlfile:
+        targets = yaml.load(ymlfile)
     
     return targets
   
+def read_mailing(filename):
+    
+    with open(filename, 'r') as ymlfile:
+        mailing = yaml.load(ymlfile)
+    
+    return mailing    
+
 def write_masterframe(filename, image, header, overwrite=True):
     
     image = image.astype('float32')    

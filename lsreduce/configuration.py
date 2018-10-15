@@ -22,7 +22,8 @@ tmpdir = r'd:\tmp'
 
 starcat = os.path.join(confdir, 'bringcat20180428.fits') # Location of the stellar catalogue.
 siteinfo = os.path.join(confdir, 'siteinfo.dat') # Location of the siteinfo file.
-targets = os.path.join(confdir, 'targets.dat') # Location of the targets file.
+targets = os.path.join(confdir, 'targets.yml') # Location of the targets file.
+mailing = os.path.join(confdir, 'mailing.yml') # Location of the mailing list.
 
 # Locations of the darktables.
 darktable = {'LSN': os.path.join(confdir, 'darktableLSN.dat'),
