@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='lsreduce',
-      version='2017.06',
+      version='2018.10',
       description='La Silla reduction code',
       url='https://gitlab.strw.leidenuniv.nl/talens/lsreduce.git',
       author='Talens',
