@@ -7,5 +7,4 @@ setup(name='lsreduce',
       author='Talens',
       author_email='talens@strw.leidenuniv.nl',
       packages=['lsreduce'],
-      scripts=['scripts/lsreduce.py'],
       zip_safe=False)
