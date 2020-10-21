@@ -17,7 +17,7 @@ PYTHON = r'python'
 
 MAIL_USER = 'mascara@strw.leidenuniv.nl'
 MAIL_PASSWORD = 'XOpl@net'
-MAIL_RECIPIENTS = ['talens@strw.leidenuniv.nl']
+MAIL_RECIPIENTS = ['talensgj@gmail.com']
 
 # psutil.ABOVE_NORMAL_PRIORITY_CLASS
 # psutil.BELOW_NORMAL_PRIORITY_CLASS
