@@ -18,11 +18,12 @@ from . import summarize
 ### Helper functions.
 ###############################################################################
 
-def get_datestring():
+def get_datestring(t=None):
 
     import datetime
-    
-    t = datetime.datetime.utcnow()
+
+    if t is None:
+        t = datetime.datetime.utcnow()
 
     return t.strftime('%Y%m%d')
 
@@ -352,7 +353,8 @@ def rawdir_monitor(camid, nocal=False, twilight=5, nscience=49, nbias=20, ndark=
                 log.info('Beginning of new night.')
                 
                 # Build directory tree for the current night.
-                date = get_datestring()                
+                t = astrometry.last_sunset(siteinfo)
+                date = get_datestring(t=t)
                 dirtree = build_dirtree(date, camid)                               
                 
                 # Write a queuefile to indicate the night has begun.
