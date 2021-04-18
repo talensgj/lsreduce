@@ -5,7 +5,7 @@ sys.path.insert(0, os.getcwd())
 import traceback
 
 from astropy.utils.iers import conf as iersconf
-iersconf.iers_auto_url = 'ftp://cddis.gsfc.nasa.gov/pub/products/iers/finals2000A.all'
+iersconf.iers_auto_url = 'https://home.strw.leidenuniv.nl/~stuik/finals2000A.all'
 
 import logging.config
 logging.config.fileConfig('./lsreduce/logging.conf')
