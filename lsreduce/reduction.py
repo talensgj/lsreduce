@@ -325,11 +325,15 @@ def preprocess(stack, headers, darktable):
     return stack, station  
    
 def sunmoon2station(station, siteinfo, astro):
-    
+
+    log.info('Computing Sun and Moon positions.')
+
     import ephem    
     
-    nimages = len(station)    
-    
+    nimages = len(station)
+
+    log.info('Adding fields to the station array.')
+
     fields = {'sunra':'float32', 'sundec':'float32', 'sunalt':'float32',
               'moonra':'float32', 'moondec':'float32', 'moonalt':'float32',
               'moonx':'uint16', 'moony':'uint16',
@@ -344,6 +348,8 @@ def sunmoon2station(station, siteinfo, astro):
     station = nstation    
     
     # Compute the sky position of the sun.
+    log.info('Computing Sun position on the sky.')
+
     ra, dec, alt = astrometry.sun_position(siteinfo, station['jd'])
     
     station['sunra'] = ra
@@ -351,6 +357,8 @@ def sunmoon2station(station, siteinfo, astro):
     station['sunalt'] = alt
     
     # Compute the sky position of the moon.
+    log.info('Computing Moon position on the sky.')
+
     ra, dec, alt = astrometry.moon_position(siteinfo, station['jd'])    
     
     station['moonra'] = ra
@@ -358,6 +366,8 @@ def sunmoon2station(station, siteinfo, astro):
     station['moonalt'] = alt
 
     # Compute the CCD position of the moon.
+    log.info('Computing Moon position on the CCD.')
+
     moon = ephem.Moon()
 
     for i in range(nimages):
@@ -374,7 +384,9 @@ def sunmoon2station(station, siteinfo, astro):
         moon.compute(station[i]['jd'] - 2415020) # ephem uses Dublin JD  
         station[i]['moonph'] = moon.moon_phase
         station[i]['moonmag'] = moon.mag
-    
+
+    log.info('Finished computing Sun and Moon positions.')
+
     return station
     
 def lightcurves(stack, station, astro, cat, aper, skyrad, maglim):
