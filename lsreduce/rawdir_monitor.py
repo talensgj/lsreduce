@@ -5,6 +5,7 @@ import os
 import glob
 import time
 import logging
+import datetime
 
 import numpy as np
 
@@ -19,8 +20,6 @@ from . import summarize
 ###############################################################################
 
 def get_datestring(t=None):
-
-    import datetime
 
     if t is None:
         t = datetime.datetime.utcnow()
@@ -72,8 +71,7 @@ def combine_temporary_files(date, camid, dirtree):
     return    
 
 def calibrate_photometry(date, camid, dirtree, systable):
-    
-    import datetime
+
     from . import cdecor_vmag    
     
     log = logging.getLogger('lsreduce')
@@ -353,7 +351,8 @@ def rawdir_monitor(camid, nocal=False, twilight=5, nscience=49, nbias=20, ndark=
                 log.info('Beginning of new night.')
                 
                 # Build directory tree for the current night.
-                t = astrometry.last_sunset(siteinfo)
+                t = datetime.datetime.utcnow() + datetime.timedelta(minutes=15)  # Add some grace for safety.
+                t = astrometry.last_sunset(siteinfo, t=t, horizon=twilight)
                 date = get_datestring(t=t)
                 dirtree = build_dirtree(date, camid)                               
                 

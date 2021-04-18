@@ -70,7 +70,7 @@ def moon_position(siteinfo, t=None):
     
     return ra, dec, alt
     
-def last_sunset(siteinfo, t=None):    
+def last_sunset(siteinfo, t=None, horizon=-10):
     """ Compute time of previous sunset. """    
     
     import datetime
@@ -80,7 +80,7 @@ def last_sunset(siteinfo, t=None):
     site.lat = siteinfo['lat']*np.pi/180.
     site.lon = siteinfo['lon']*np.pi/180.
     site.elevation = siteinfo['height']
-    site.horizon = '-10'
+    site.horizon = horizon*np.pi/180.
 
     if t is None:    
         site.date = datetime.datetime.utcnow()
